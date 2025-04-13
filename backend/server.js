@@ -34,7 +34,11 @@ const upload = multer({
 });
 
 // Middleware
-app.use(cors()); // Enable CORS
+app.use(cors({
+  origin: '*', // Allow requests from any origin during development
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+})); 
 app.use(bodyParser.json()); // Parse JSON bodies
 
 // Serve static files from uploads directory
@@ -179,8 +183,10 @@ app.delete('/posts/:id', (req, res) => {
 });
 
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
+  const HOST = '0.0.0.0'; // Listen on all network interfaces
+  app.listen(PORT, HOST, () => {
+    console.log(`Server is running on http://${HOST}:${PORT}`);
+    console.log(`Access from other computers using this server's IP address:${PORT}`);
   });
 }
 
@@ -208,13 +214,16 @@ app.post('/upload', upload.single('file'), (req, res) => {
     return res.status(400).json({ error: 'No file uploaded' });
   }
   
+  // Use the requesting host (this will be your server's actual IP)
+  const host = req.headers.host.split(':')[0];
+  
   // Return the file details including URL to access it
   res.status(201).json({
     filename: req.file.filename,
     originalname: req.file.originalname,
     mimetype: req.file.mimetype,
     size: req.file.size,
-    url: `http://localhost:${PORT}/uploads/${req.file.filename}`
+    url: `http://${host}:${PORT}/uploads/${req.file.filename}`
   });
 });
 
@@ -225,9 +234,11 @@ app.get('/files', (req, res) => {
       return res.status(500).json({ error: 'Failed to read files directory' });
     }
     
+    const host = req.headers.host.split(':')[0];
+    
     const fileList = files.map(filename => ({
       filename,
-      url: `http://localhost:${PORT}/uploads/${filename}`
+      url: `http://${host}:${PORT}/uploads/${filename}`
     }));
     
     res.json(fileList);

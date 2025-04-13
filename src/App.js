@@ -8,6 +8,8 @@ function App() {
     Modal.setAppElement('#root');
   }, []);
 
+  const SERVER_URL = 'http://192.168.0.109:5003';
+
   const [posts, setPosts] = useState([]); // Stores posts
   const [modalIsOpen, setModalIsOpen] = useState(false); // Modal state
   const [newPostText, setNewPostText] = useState(''); // New post text
@@ -59,7 +61,7 @@ function App() {
         xhr.onerror = () => reject(new Error('Network error'));
       });
       
-      xhr.open('POST', 'http://localhost:5003/upload', true);
+      xhr.open('POST', `${SERVER_URL}/upload`, true);
       xhr.send(formData);
       
       const response = await uploadPromise;
@@ -114,7 +116,7 @@ function App() {
         return;
       }
 
-      const response = await fetch('http://localhost:5003/posts');
+      const response = await fetch(`${SERVER_URL}/posts`);
       if (!response.ok) throw new Error('Server is down');
       const data = await response.json();
       setPosts(data);
@@ -250,7 +252,7 @@ function App() {
     };
     
     const operation = {
-      url: 'http://localhost:5003/posts',
+      url: `${SERVER_URL}/posts`,
       options: {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -295,7 +297,7 @@ function App() {
   // Delete a post
   const deletePost = (id) => {
     const operation = {
-      url: `http://localhost:5003/posts/${id}`,
+      url: `${SERVER_URL}/posts/${id}`,
       options: { method: 'DELETE' },
       id: id // Add id to identify which post to delete when syncing
     };
@@ -354,7 +356,7 @@ function App() {
     };
 
     const operation = {
-      url: `http://localhost:5003/posts/${id}`,
+      url: `${SERVER_URL}/posts/${id}`,
       options: {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -452,7 +454,7 @@ function App() {
     const checkServerStatus = async () => {
       try {
         console.log("Checking server status...");
-        const response = await fetch('http://localhost:5003/');
+        const response = await fetch(`${SERVER_URL}/`);
         
         if (response.ok) {
           if (isServerDown) {
