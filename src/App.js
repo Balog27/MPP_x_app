@@ -10,7 +10,7 @@ function App() {
     Modal.setAppElement('#root');
   }, []);
 
-  const SERVER_URL = 'http://172.20.10.9:5003';
+  const SERVER_URL = 'http://192.168.0.109:5003';
 
   const [posts, setPosts] = useState([]); // Stores posts
   const [modalIsOpen, setModalIsOpen] = useState(false); // Modal state

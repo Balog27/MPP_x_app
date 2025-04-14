@@ -5,9 +5,168 @@ const { faker } = require('@faker-js/faker'); // Import Faker.js
 const multer = require('multer'); // For file uploads
 const path = require('path');
 const fs = require('fs');
+const WebSocket = require('ws');
+const http = require('http');
 
 const app = express();
 const PORT = 5003
+
+// Create HTTP server instance from Express app
+const server = http.createServer(app);
+
+// Create WebSocket server
+const wss = new WebSocket.Server({ server });
+
+// Track active generators
+let generatorActive = false;
+let generatorInterval = null;
+let generationStats = {
+  link: 0,
+  photo: 0,
+  video: 0
+};
+
+// Set up WebSocket connection handler
+wss.on('connection', (ws) => {
+  console.log('Client connected to WebSocket');
+  
+  // Send initial generation stats
+  ws.send(JSON.stringify({ 
+    type: 'generationStats', 
+    stats: generationStats,
+    isGenerating: generatorActive
+  }));
+  
+  // Handle messages from clients
+  ws.on('message', (message) => {
+    try {
+      const data = JSON.parse(message);
+      
+      if (data.action === 'startGenerator') {
+        startPostGenerator(ws);
+      } else if (data.action === 'stopGenerator') {
+        stopPostGenerator();
+      } else if (data.action === 'getStats') {
+        ws.send(JSON.stringify({ 
+          type: 'generationStats', 
+          stats: generationStats,
+          isGenerating: generatorActive
+        }));
+      }
+    } catch (error) {
+      console.error('Error processing WebSocket message:', error);
+    }
+  });
+  
+  // Handle client disconnect
+  ws.on('close', () => {
+    console.log('Client disconnected from WebSocket');
+  });
+});
+
+// Functions to start and stop the post generator
+function startPostGenerator(ws) {
+  if (generatorActive) return;
+  
+  generatorActive = true;
+  console.log('Starting post generator');
+  
+  // Reset stats when starting a new generation session
+  generationStats = { link: 0, photo: 0, video: 0 };
+  
+  // Broadcast to all clients that generation has started
+  wss.clients.forEach(client => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(JSON.stringify({ 
+        type: 'generatorStatus', 
+        active: true,
+        stats: generationStats
+      }));
+    }
+  });
+  
+  // Generate a new post every 3 seconds
+  generatorInterval = setInterval(() => {
+    if (!generatorActive) {
+      clearInterval(generatorInterval);
+      return;
+    }
+    
+    // Generate random post type and create post
+    const postTypes = ['link', 'photo', 'video'];
+    const postType = postTypes[Math.floor(Math.random() * postTypes.length)];
+    
+    // Generate a post based on the type
+    const newPost = generateRandomPost(postType);
+    
+    // Update stats
+    generationStats[postType]++;
+    
+    // Add the post to our collection
+    posts.push(newPost);
+    
+    // Broadcast the new post and updated stats to all connected clients
+    wss.clients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify({
+          type: 'newPost',
+          post: newPost,
+          stats: generationStats
+        }));
+      }
+    });
+  }, 3000);
+}
+
+function stopPostGenerator() {
+  if (!generatorActive) return;
+  
+  generatorActive = false;
+  console.log('Stopping post generator');
+  
+  if (generatorInterval) {
+    clearInterval(generatorInterval);
+    generatorInterval = null;
+  }
+  
+  // Broadcast to all clients that generation has stopped
+  wss.clients.forEach(client => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(JSON.stringify({ 
+        type: 'generatorStatus', 
+        active: false,
+        stats: generationStats
+      }));
+    }
+  });
+}
+
+// Function to generate a random post based on type
+function generateRandomPost(type) {
+  const id = faker.string.uuid();
+  const text = faker.lorem.paragraph(1);
+  let img;
+  let isVideo = false;
+  
+  // Generate appropriate URL based on type
+  if (type === 'link') {
+    img = `https://picsum.photos/seed/${Date.now()}/300/200`;
+  } else if (type === 'photo') {
+    img = `https://picsum.photos/seed/${Date.now() + 1}/300/200`;
+  } else if (type === 'video') {
+    img = `https://example.com/video-${Date.now()}.mp4`;
+    isVideo = true;
+  }
+  
+  return {
+    id,
+    text,
+    img,
+    date: new Date().toLocaleString(),
+    isVideo,
+    generatedType: type
+  };
+}
 
 // Create uploads directory if it doesn't exist
 const uploadDir = path.join(__dirname, 'uploads');
@@ -185,8 +344,9 @@ app.delete('/posts/:id', (req, res) => {
 
 if (process.env.NODE_ENV !== 'test') {
   const HOST = '0.0.0.0'; // Listen on all network interfaces
-  app.listen(PORT, HOST, () => {
+  server.listen(PORT, HOST, () => {
     console.log(`Server is running on http://${HOST}:${PORT}`);
+    console.log(`WebSocket server is running on ws://${HOST}:${PORT}`);
     console.log(`Access from other computers using this server's IP address:${PORT}`);
   });
 }
