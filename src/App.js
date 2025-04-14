@@ -1,14 +1,16 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Modal from 'react-modal';
 import './App.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';
+import WebSocketService from './webSocketService';
+import GeneratorControlPanel from './components/GeneratorControlPanel';
 
 function App() {
   useEffect(() => {
     Modal.setAppElement('#root');
   }, []);
 
-  const SERVER_URL = 'http://192.168.0.109:5003';
+  const SERVER_URL = 'http://172.20.10.9:5003';
 
   const [posts, setPosts] = useState([]); // Stores posts
   const [modalIsOpen, setModalIsOpen] = useState(false); // Modal state
@@ -26,6 +28,74 @@ function App() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [fileUploadProgress, setFileUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+
+  // Add these new state variables
+  const [wsConnected, setWsConnected] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationStats, setGenerationStats] = useState({ link: 0, photo: 0, video: 0 });
+  const wsService = useRef(null);
+
+  // Initialize WebSocket service
+  useEffect(() => {
+    // Create WebSocket service
+    const serverUrl = SERVER_URL || 'http://localhost:5003';
+    wsService.current = new WebSocketService(serverUrl);
+    
+    // Setup event listeners
+    const connectionListener = (connected) => {
+      setWsConnected(connected);
+    };
+    
+    const newPostListener = (post) => {
+      // Add new post to the list
+      setPosts(prevPosts => {
+        // Check if post already exists
+        if (prevPosts.some(p => p.id === post.id)) {
+          return prevPosts;
+        }
+        return [post, ...prevPosts];
+      });
+    };
+    
+    const generatorStatusListener = (isActive) => {
+      setIsGenerating(isActive);
+    };
+    
+    const statsListener = (stats) => {
+      setGenerationStats(stats);
+    };
+    
+    // Add event listeners
+    wsService.current.addEventListener('connectionChange', connectionListener);
+    wsService.current.addEventListener('newPost', newPostListener);
+    wsService.current.addEventListener('generatorStatus', generatorStatusListener);
+    wsService.current.addEventListener('generationStats', statsListener);
+    
+    // Connect to the WebSocket server
+    wsService.current.connect();
+    
+    // Cleanup function
+    return () => {
+      wsService.current.removeEventListener('connectionChange', connectionListener);
+      wsService.current.removeEventListener('newPost', newPostListener);
+      wsService.current.removeEventListener('generatorStatus', generatorStatusListener);
+      wsService.current.removeEventListener('generationStats', statsListener);
+      wsService.current.disconnect();
+    };
+  }, []);
+
+  // Handler functions for generator control
+  const handleStartGenerator = () => {
+    if (wsService.current) {
+      wsService.current.startGenerator();
+    }
+  };
+  
+  const handleStopGenerator = () => {
+    if (wsService.current) {
+      wsService.current.stopGenerator();
+    }
+  };
 
   // Add this function to your App component
   const uploadFile = async (file) => {
@@ -102,9 +172,100 @@ function App() {
     }
   };
 
-  // Save posts to local storage
+  const syncLocalStorageToServer = async () => {
+    try {
+      // Only proceed if we have data in localStorage and the server is back online
+      if (isNetworkDown || isServerDown) return;
+      
+      const savedPosts = localStorage.getItem('posts');
+      if (!savedPosts) return;
+      
+      const parsedPosts = JSON.parse(savedPosts);
+      console.log(`Syncing ${parsedPosts.length} posts from localStorage to server...`);
+      
+      // Track successes and failures
+      let successCount = 0;
+      let failureCount = 0;
+      
+      // Process each post from localStorage
+      for (const post of parsedPosts) {
+        try {
+          // Check if post already exists on server
+          const checkResponse = await fetch(`${SERVER_URL}/posts/${post.id}`);
+          
+          if (checkResponse.status === 404) {
+            // Post doesn't exist on server, so create it
+            const createResponse = await fetch(`${SERVER_URL}/posts`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(post)
+            });
+            
+            if (createResponse.ok) {
+              successCount++;
+            } else {
+              failureCount++;
+            }
+          } else if (checkResponse.ok) {
+            // Post exists, check if we need to update it
+            const serverPost = await checkResponse.json();
+            
+            // Compare local and server posts - if different, update server
+            if (post.text !== serverPost.text || post.img !== serverPost.img) {
+              const updateResponse = await fetch(`${SERVER_URL}/posts/${post.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  text: post.text,
+                  img: post.img,
+                  isVideo: post.isVideo
+                })
+              });
+              
+              if (updateResponse.ok) {
+                successCount++;
+              } else {
+                failureCount++;
+              }
+            }
+          }
+        } catch (error) {
+          console.error(`Error processing post ${post.id}:`, error);
+          failureCount++;
+        }
+      }
+      
+      console.log(`Sync complete: ${successCount} successful, ${failureCount} failed`);
+      
+      // If any changes were made, refresh posts from the server
+      if (successCount > 0) {
+        await fetchPosts();
+      }
+    } catch (error) {
+      console.error("Error syncing from localStorage to server:", error);
+    }
+  };
+
+  // Save posts to local storage with optimization
   const savePostsToLocalStorage = (updatedPosts) => {
-    localStorage.setItem('posts', JSON.stringify(updatedPosts));
+    try {
+      localStorage.setItem('posts', JSON.stringify(updatedPosts));
+      console.log('Saved', updatedPosts.length, 'posts to local storage');
+    } catch (error) {
+      // Handle localStorage quota exceeded
+      if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+        console.error('Local storage quota exceeded. Trying to save essential data only.');
+        // Try to save just the text and IDs as a fallback
+        const essentialData = updatedPosts.map(post => ({
+          id: post.id,
+          text: post.text,
+          date: post.date
+        }));
+        localStorage.setItem('posts-essential', JSON.stringify(essentialData));
+      } else {
+        console.error('Error saving posts to localStorage:', error);
+      }
+    }
   };
 
   // Fetch posts from the backend
@@ -131,7 +292,7 @@ function App() {
     }
   };
 
-  // Sync offline operations - FIXED to handle new posts correctly
+  // Improved sync offline queue function
   const syncOfflineQueue = useCallback(async () => {
     if (offlineQueue.length === 0) return;
     
@@ -201,15 +362,16 @@ function App() {
           const response = await fetch(operation.url, operation.options);
           
           if (response.ok) {
-            console.log("Operation successful for ID:", operation.id || "unknown");
+            console.log("DELETE operation successful for ID:", operation.id || "unknown");
             operationsToRemove.push(i);
             syncedData = true;
           } else {
-            console.log(`Operation failed with status: ${response.status}`);
+            console.log(`DELETE operation failed with status: ${response.status}`);
           }
         }
       } catch (error) {
         console.error("Failed to sync operation:", error);
+        // Don't remove failed operations, we'll retry them later
       }
     }
     
@@ -218,6 +380,7 @@ function App() {
       // Create a new queue excluding the processed operations
       const newQueue = offlineQueue.filter((_, index) => !operationsToRemove.includes(index));
       setOfflineQueue(newQueue);
+      // LocalStorage update happens via useEffect
       
       // Only fetch fresh data if we've synced any operations successfully
       if (syncedData) {
@@ -444,7 +607,7 @@ function App() {
     };
   }, [isServerDown, offlineQueue.length, syncOfflineQueue]);
 
-  // Check server status periodically when online - FIXED VERSION
+  // Check server status periodically with improved error handling
   useEffect(() => {
     if (isNetworkDown) return;
     
@@ -454,26 +617,42 @@ function App() {
     const checkServerStatus = async () => {
       try {
         console.log("Checking server status...");
-        const response = await fetch(`${SERVER_URL}/`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+        
+        const response = await fetch(`${SERVER_URL}/`, { 
+          signal: controller.signal,
+          cache: 'no-store' // Prevent caching
+        });
+        
+        clearTimeout(timeoutId);
         
         if (response.ok) {
           if (isServerDown) {
             console.log("Server was down, now it's up");
             setIsServerDown(false);
             
-            // Only sync if not already syncing and there are operations
-            if (!isSyncing && offlineQueue.length > 0) {
+            // Only sync if not already syncing
+            if (!isSyncing) {
               console.log("Starting sync process...");
               isSyncing = true;
               
               // Add a delay to ensure state is updated
               setTimeout(() => {
-                syncOfflineQueue().finally(() => {
+                // First sync localStorage data to server
+                syncLocalStorageToServer().then(() => {
+                  // Then sync offline queue operations
+                  if (offlineQueue.length > 0) {
+                    return syncOfflineQueue();
+                  }
+                }).finally(() => {
                   isSyncing = false;
                 });
               }, 1000);
             }
           }
+        } else {
+          setIsServerDown(true);
         }
       } catch (error) {
         console.log("Server is down:", error.message);
@@ -481,7 +660,7 @@ function App() {
       }
     };
     
-    const interval = setInterval(checkServerStatus, 15000); // Increase to 15 seconds
+    const interval = setInterval(checkServerStatus, 15000); // Check every 15 seconds
     
     // Check immediately on mount or when dependencies change
     checkServerStatus();
@@ -500,6 +679,24 @@ function App() {
     
     initialLoad();
   }, []);
+
+  // Add these to your useEffect hooks
+  // Load offline queue from localStorage when the component mounts
+  useEffect(() => {
+    const savedQueue = localStorage.getItem('offlineQueue');
+    if (savedQueue) {
+      try {
+        setOfflineQueue(JSON.parse(savedQueue));
+      } catch (error) {
+        console.error('Error parsing offline queue from localStorage', error);
+      }
+    }
+  }, []);
+
+  // Save offline queue to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('offlineQueue', JSON.stringify(offlineQueue));
+  }, [offlineQueue]);
 
   // Handle search
   const handleSearch = (e) => {
@@ -622,6 +819,17 @@ function App() {
         </div>
       </main>
       <aside className="App-sidebar-right">
+        {/* Add Generator Control Panel at the top of the right sidebar */}
+        <div className="sidebar-item generator-container">
+          <GeneratorControlPanel 
+            isGenerating={isGenerating}
+            stats={generationStats}
+            onStartGenerator={handleStartGenerator}
+            onStopGenerator={handleStopGenerator}
+            isConnected={wsConnected}
+          />
+        </div>
+        
         <div className="sidebar-item">
           <h3>Statistics</h3>
           <table className="statistics-table">
@@ -812,10 +1020,25 @@ const deduplicatePosts = (postArray) => {
   });
 };
 
-// Add this utility function to check if a file is a video
+// Improved utility function to check if a file is a video
 const isVideoFile = (filePath) => {
-  const videoExtensions = ['.mp4', '.webm', '.ogg'];
-  return videoExtensions.some((ext) => filePath.endsWith(ext));
+  if (!filePath) return false;
+  
+  // Check by file extension
+  const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv', '.flv', '.wmv'];
+  const hasVideoExtension = videoExtensions.some(ext => 
+    filePath.toLowerCase().endsWith(ext)
+  );
+  
+  // Also check by URL parameter or MIME type indicators
+  const hasVideoParam = filePath.includes('video') || 
+                        filePath.includes('mp4') || 
+                        filePath.includes('webm');
+                         
+  return hasVideoExtension || hasVideoParam;
 };
+
+// Add this function to synchronize localStorage data with the server
+
 
 export default App;

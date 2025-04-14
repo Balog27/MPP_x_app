@@ -62,7 +62,7 @@ const generateRandomPosts = (numPosts) => {
 };
 
 // Populate the posts array with initial random posts
-posts = generateRandomPosts(1);
+posts = generateRandomPosts(100);
 
 // Helper function to validate post data
 const validatePost = (post) => {
@@ -129,7 +129,7 @@ app.get('/posts/:id', (req, res) => {
 
 // Create a new post
 app.post('/posts', (req, res) => {
-  const { text, img, id, date } = req.body;
+  const { text, img, id, date, isVideo } = req.body;
 
   // Validate data
   const error = validatePost({ text, img });
@@ -138,10 +138,11 @@ app.post('/posts', (req, res) => {
   }
 
   const newPost = {
-    id: id || Date.now().toString(),
+    id: id || Date.now().toString(), // Use client-provided ID if available
     text,
     img,
     date: date || new Date().toLocaleString(),
+    isVideo: isVideo || false
   };
 
   posts.push(newPost);
@@ -243,6 +244,86 @@ app.get('/files', (req, res) => {
     
     res.json(fileList);
   });
+});
+
+// Add this to your server.js file
+// Sync multiple operations endpoint
+app.post('/sync', express.json({ limit: '50mb' }), (req, res) => {
+  const { operations } = req.body;
+  const results = [];
+  const errors = [];
+  
+  if (!Array.isArray(operations)) {
+    return res.status(400).json({ error: 'Operations must be an array' });
+  }
+  
+  // Process each operation
+  for (let operation of operations) {
+    try {
+      // Handle POST requests
+      if (operation.method === 'POST' && operation.data) {
+        const { text, img, id, date, isVideo } = operation.data;
+        
+        // Validate data
+        const error = validatePost({ text, img });
+        if (error) {
+          errors.push({ id, error });
+          continue;
+        }
+        
+        const newPost = {
+          id: id || Date.now().toString(),
+          text,
+          img,
+          date: date || new Date().toLocaleString(),
+          isVideo
+        };
+        
+        posts.push(newPost);
+        results.push({ id, success: true, post: newPost });
+      }
+      // Handle PUT requests
+      else if (operation.method === 'PUT' && operation.id && operation.data) {
+        const post = posts.find((p) => p.id === operation.id);
+        
+        if (!post) {
+          errors.push({ id: operation.id, error: 'Post not found' });
+          continue;
+        }
+        
+        const { text, img, isVideo } = operation.data;
+        
+        // Validate data
+        const error = validatePost({ text, img });
+        if (error) {
+          errors.push({ id: operation.id, error });
+          continue;
+        }
+        
+        post.text = text;
+        post.img = img;
+        if (isVideo !== undefined) post.isVideo = isVideo;
+        
+        results.push({ id: operation.id, success: true, post });
+      }
+      // Handle DELETE requests
+      else if (operation.method === 'DELETE' && operation.id) {
+        const postIndex = posts.findIndex((p) => p.id === operation.id);
+        
+        if (postIndex === -1) {
+          errors.push({ id: operation.id, error: 'Post not found' });
+          continue;
+        }
+        
+        posts.splice(postIndex, 1);
+        results.push({ id: operation.id, success: true });
+      }
+    } catch (error) {
+      errors.push({ id: operation.id || 'unknown', error: error.message });
+    }
+  }
+  
+  res.json({ results, errors });
 });
 
 module.exports = app; // Export the app for testing

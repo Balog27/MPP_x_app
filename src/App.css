@@ -393,3 +393,93 @@ video.post-media {
     gap: 10px;
   }
 }
+
+/* Generator Control Panel Styles */
+.generator-container {
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.generator-panel {
+  background-color: #15202b;
+  border-radius: 10px;
+  padding: 15px;
+  margin-bottom: 15px;
+}
+
+.generator-panel h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.connection-status {
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.status-connected {
+  color: #4caf50;
+  font-weight: bold;
+}
+
+.status-disconnected {
+  color: #f44336;
+  font-weight: bold;
+}
+
+.generator-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 15px;
+}
+
+.generator-start-btn {
+  background-color: #4caf50;
+  flex: 1;
+  margin-right: 5px;
+}
+
+.generator-stop-btn {
+  background-color: #f44336;
+  flex: 1;
+  margin-left: 5px;
+}
+
+.generator-buttons button:disabled {
+  background-color: #555;
+  cursor: not-allowed;
+}
+
+.generator-stats {
+  margin-top: 20px;
+}
+
+.stats-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.stat-item {
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 8px;
+  border-radius: 5px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.stat-label {
+  font-weight: bold;
+}
+
+.stat-value {
+  color: #1da1f2;
+}
+
+.chart-container {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 10px;
+}
