@@ -5,12 +5,13 @@ import '@fortawesome/fontawesome-free/css/all.min.css';
 import WebSocketService from './webSocketService';
 import GeneratorControlPanel from './components/GeneratorControlPanel';
 
+// Define SERVER_URL as a constant at the top level
+const SERVER_URL = 'http://192.168.0.109:5003';
+
 function App() {
   useEffect(() => {
     Modal.setAppElement('#root');
   }, []);
-
-  const SERVER_URL = 'http://192.168.0.109:5003';
 
   const [posts, setPosts] = useState([]); // Stores posts
   const [modalIsOpen, setModalIsOpen] = useState(false); // Modal state

@@ -7,6 +7,12 @@ const path = require('path');
 const fs = require('fs');
 const WebSocket = require('ws');
 const http = require('http');
+const sequelize = require('./config/database');
+const monitoringService = require('./services/monitoringService');
+
+// Import routes
+const authRoutes = require('./routes/auth');
+const adminRoutes = require('./routes/admin');
 
 const app = express();
 const PORT = 5003
@@ -104,6 +110,9 @@ function startPostGenerator(ws) {
     
     // Add the post to our collection
     posts.push(newPost);
+    
+    // Save changes to disk
+    savePostsToDisk();
     
     // Broadcast the new post and updated stats to all connected clients
     wss.clients.forEach(client => {
@@ -203,25 +212,47 @@ app.use(bodyParser.json()); // Parse JSON bodies
 // Serve static files from uploads directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
+
 // In-memory data storage
 let posts = [];
 
-// Function to generate random posts
-const generateRandomPosts = (numPosts) => {
-  const randomPosts = [];
-  for (let i = 0; i < numPosts; i++) {
-    randomPosts.push({
-      id: faker.string.uuid(), // Generate a unique ID
-      text: faker.lorem.paragraph(1), // Generate a meaningful paragraph
-      img: `https://picsum.photos/seed/${i}/300/200`, // Generate unique images using a seed
-      date: faker.date.recent().toLocaleString(), // Generate a recent date
-    });
-  }
-  return randomPosts;
-};
+// Try to load posts from a local file when server starts
+const postsFilePath = path.join(__dirname, 'posts-backup.json');
 
-// Populate the posts array with initial random posts
-posts = generateRandomPosts(100);
+// Initialize posts - either from backup file or generate if file doesn't exist
+try {
+  if (fs.existsSync(postsFilePath)) {
+    const postsData = fs.readFileSync(postsFilePath, 'utf8');
+    posts = JSON.parse(postsData);
+    console.log(`Loaded ${posts.length} posts from backup file`);
+  } else {
+    // Only generate random posts if we don't have any saved
+    posts = generateRandomPosts(100);
+    console.log('Generated 100 random posts');
+    
+    // Save the generated posts to file
+    fs.writeFileSync(postsFilePath, JSON.stringify(posts, null, 2));
+    console.log('Saved generated posts to backup file');
+  }
+} catch (error) {
+  console.error('Error loading posts:', error);
+  // Fallback to generating random posts
+  posts = generateRandomPosts(100);
+  console.log('Generated 100 random posts (fallback)');
+}
+
+// Function to save posts to disk
+const savePostsToDisk = () => {
+  try {
+    fs.writeFileSync(postsFilePath, JSON.stringify(posts, null, 2));
+    console.log(`Saved ${posts.length} posts to backup file`);
+  } catch (error) {
+    console.error('Error saving posts to disk:', error);
+  }
+};
 
 // Helper function to validate post data
 const validatePost = (post) => {
@@ -286,9 +317,16 @@ app.get('/posts/:id', (req, res) => {
   res.json(post);
 });
 
-// Create a new post
+// Update the POST endpoint in server.js
 app.post('/posts', (req, res) => {
   const { text, img, id, date, isVideo } = req.body;
+
+  // Check if a post with this ID already exists to prevent duplicates
+  const existingPost = posts.find(post => post.id === id);
+  if (existingPost) {
+    console.log(`Post with ID ${id} already exists, returning existing post`);
+    return res.status(200).json(existingPost);
+  }
 
   // Validate data
   const error = validatePost({ text, img });
@@ -297,7 +335,7 @@ app.post('/posts', (req, res) => {
   }
 
   const newPost = {
-    id: id || Date.now().toString(), // Use client-provided ID if available
+    id: id || Date.now().toString(),
     text,
     img,
     date: date || new Date().toLocaleString(),
@@ -305,10 +343,16 @@ app.post('/posts', (req, res) => {
   };
 
   posts.push(newPost);
+  
+  // Save changes to disk if you have that function
+  if (typeof savePostsToDisk === 'function') {
+    savePostsToDisk();
+  }
+  
   res.status(201).json(newPost);
 });
 
-// Update a post by ID
+// Update the PUT endpoint
 app.put('/posts/:id', (req, res) => {
   const { text, img, date } = req.body;
   const post = posts.find((p) => p.id === req.params.id);
@@ -327,10 +371,13 @@ app.put('/posts/:id', (req, res) => {
   post.img = img;
   if (date) post.date = date;
   
+  // Save changes to disk
+  savePostsToDisk();
+  
   res.json(post);
 });
 
-// Delete a post by ID
+// Update the DELETE endpoint
 app.delete('/posts/:id', (req, res) => {
   const postIndex = posts.findIndex((p) => p.id === req.params.id);
 
@@ -339,20 +386,11 @@ app.delete('/posts/:id', (req, res) => {
   }
 
   posts.splice(postIndex, 1);
+  
+  // Save changes to disk
+  savePostsToDisk();
+  
   res.status(204).send();
-});
-
-if (process.env.NODE_ENV !== 'test') {
-  const HOST = '0.0.0.0'; // Listen on all network interfaces
-  server.listen(PORT, HOST, () => {
-    console.log(`Server is running on http://${HOST}:${PORT}`);
-    console.log(`WebSocket server is running on ws://${HOST}:${PORT}`);
-    console.log(`Access from other computers using this server's IP address:${PORT}`);
-  });
-}
-
-app.get('/', (req, res) => {
-  res.send('Welcome to the Posts API! Use /posts or /posts/infinite to interact with the API.');
 });
 
 // Infinite scroll endpoint
@@ -424,6 +462,14 @@ app.post('/sync', express.json({ limit: '50mb' }), (req, res) => {
       if (operation.method === 'POST' && operation.data) {
         const { text, img, id, date, isVideo } = operation.data;
         
+        // Check if a post with this ID already exists
+        const existingPost = posts.find(p => p.id === id);
+        if (existingPost) {
+          console.log(`Post with ID ${id} already exists, skipping`);
+          results.push({ id, success: true, post: existingPost, status: 'skipped' });
+          continue;
+        }
+        
         // Validate data
         const error = validatePost({ text, img });
         if (error) {
@@ -440,7 +486,7 @@ app.post('/sync', express.json({ limit: '50mb' }), (req, res) => {
         };
         
         posts.push(newPost);
-        results.push({ id, success: true, post: newPost });
+        results.push({ id, success: true, post: newPost, status: 'created' });
       }
       // Handle PUT requests
       else if (operation.method === 'PUT' && operation.id && operation.data) {
@@ -483,7 +529,36 @@ app.post('/sync', express.json({ limit: '50mb' }), (req, res) => {
     }
   }
   
+  // After all operations are processed, save changes to disk
+  if (results.length > 0) {
+    savePostsToDisk();
+  }
+  
   res.json({ results, errors });
 });
+
+// Initialize database and start monitoring
+async function initializeApp() {
+  try {
+    // Sync database models
+    await sequelize.sync({ alter: true });
+    console.log('Database synchronized successfully');
+
+    // Start monitoring service
+    monitoringService.startMonitoring();
+    console.log('Monitoring service started');
+
+    // Start server
+    server.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error('Failed to initialize app:', error);
+    process.exit(1);
+  }
+}
+
+// Initialize the application
+initializeApp();
 
 module.exports = app; // Export the app for testing
