@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const { User } = require('../models');
 const { JWT_SECRET } = require('../middleware/auth');
 const monitoringService = require('../services/monitoringService');
+const { Op } = require('sequelize');
 
 // Register
 router.post('/register', async (req, res) => {

@@ -1,6 +1,6 @@
 const { Sequelize } = require('sequelize');
 
-const sequelize = new Sequelize('mpp_x_db', 'root', '', {
+const sequelize = new Sequelize('blog_db', 'root', '', {
   host: 'localhost',
   dialect: 'mysql',
   logging: false,

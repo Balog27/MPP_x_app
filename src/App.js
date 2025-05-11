@@ -4,11 +4,21 @@ import './App.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import WebSocketService from './webSocketService';
 import GeneratorControlPanel from './components/GeneratorControlPanel';
+import MainApp from './MainApp'; // your main app component
+import Auth from './components/Auth'; // your login/register component
 
 // Define SERVER_URL as a constant at the top level
-const SERVER_URL = 'http://192.168.0.109:5003';
+const SERVER_URL = 'http://192.168.0.100:5003';
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    // Check for token in localStorage (or sessionStorage)
+    const token = localStorage.getItem('token');
+    setIsAuthenticated(!!token);
+  }, []);
+
   useEffect(() => {
     Modal.setAppElement('#root');
   }, []);
@@ -741,271 +751,13 @@ function App() {
   const { totalPosts, shortDescriptions, mediumDescriptions, longDescriptions } = getStatistics();
 
   return (
-    <div className="App">
-      {isNetworkDown && <div className="alert network-alert">Network is down. Working in offline mode.</div>}
-      {isServerDown && !isNetworkDown && <div className="alert server-alert">Server is down. Working in offline mode.</div>}
-      
-      <aside className="App-sidebar">
-        <div className="sidebar-item">Main Screen</div>
-        <div className="sidebar-item">
-          Explore
-          <i className="fas fa-search" onClick={() => setSearchTerm('')}></i>
-        </div>
-        <div className="sidebar-item">Notifications</div>
-        <div className="sidebar-item">Messages</div>
-      </aside>
-      <main className="App-main">
-        <div className="buttons">
-          <button onClick={() => { setEditingPost(null); setNewPostText(''); setNewPostImg(''); setModalIsOpen(true); }}>
-            Add Post
-          </button>
-          <div className="sort-options">
-            <button onClick={() => handleSort('asc')}>Sort A-Z</button>
-            <button onClick={() => handleSort('desc')}>Sort Z-A</button>
-          </div>
-          <input
-            type="text"
-            placeholder="Search posts"
-            value={searchTerm}
-            onChange={handleSearch}
-          />
-        </div>
-        <div id="posts-container">
-          {filteredPosts.map((post) => (
-            <div key={post.id} className="post">
-              <div className="post-menu">
-                <button onClick={() => setMenuOpen(menuOpen === post.id ? null : post.id)}>⋮</button>
-                {menuOpen === post.id && (
-                  <div className="post-menu-options">
-                    <button onClick={() => startEditingPost(post.id)}>Edit</button>
-                    <button onClick={() => deletePost(post.id)}>Delete</button>
-                  </div>
-                )}
-              </div>
-              <p className={getDescriptionClass(post.text)}>{post.text}</p>
-              <p className="post-date">{post.date}</p>
-              
-              {/* Improved video/image rendering */}
-              {post.isVideo || isVideoFile(post.img) ? (
-                <video 
-                  controls
-                  className="post-media"
-                  src={post.img}
-                  preload="metadata"
-                >
-                  Your browser does not support the video tag.
-                </video>
-              ) : (
-                <img 
-                  src={post.img} 
-                  alt="Post content" 
-                  className="post-media" 
-                  onError={(e) => {
-                    // If image fails to load, try as video
-                    if (!post.videoAttempted) {
-                      post.videoAttempted = true;
-                      console.log("Trying to load as video:", post.img);
-                      const video = document.createElement('video');
-                      video.src = post.img;
-                      video.onloadedmetadata = () => {
-                        post.isVideo = true;
-                        setPosts([...posts]);
-                      };
-                    }
-                  }}
-                />
-              )}
-            </div>
-          ))}
-        </div>
-      </main>
-      <aside className="App-sidebar-right">
-        {/* Add Generator Control Panel at the top of the right sidebar */}
-        <div className="sidebar-item generator-container">
-          <GeneratorControlPanel 
-            isGenerating={isGenerating}
-            stats={generationStats}
-            onStartGenerator={handleStartGenerator}
-            onStopGenerator={handleStopGenerator}
-            isConnected={wsConnected}
-          />
-        </div>
-        
-        <div className="sidebar-item">
-          <h3>Statistics</h3>
-          <table className="statistics-table">
-            <tbody>
-              <tr>
-                <td>Total Posts:</td>
-                <td>{totalPosts}</td>
-              </tr>
-              <tr>
-                <td>Short Descriptions (0-4 words):</td>
-                <td>{shortDescriptions}</td>
-              </tr>
-              <tr>
-                <td>Medium Descriptions (5-20 words):</td>
-                <td>{mediumDescriptions}</td>
-              </tr>
-              <tr>
-                <td>Long Descriptions (20+ words):</td>
-                <td>{longDescriptions}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        {offlineQueue.length > 0 && (
-          <div className="sidebar-item">
-            <h3>Pending Operations</h3>
-            <p>{offlineQueue.length} operations waiting to sync</p>
-            <div className="queue-buttons">
-              {!isNetworkDown && !isServerDown && (
-                <button 
-                  onClick={syncOfflineQueue}
-                  className="sync-button"
-                >
-                  Sync Now
-                </button>
-              )}
-              <button 
-                onClick={() => {
-                  if (window.confirm('Clear all pending operations? This cannot be undone.')) {
-                    setOfflineQueue([]);
-                  }
-                }}
-                className="clear-button"
-              >
-                Clear Queue
-              </button>
-            </div>
-          </div>
-        )}
-      </aside>
-      <Modal isOpen={modalIsOpen} onRequestClose={() => setModalIsOpen(false)}>
-        <h2>{editingPost ? 'Edit post' : 'Add a new post'}</h2>
-        <form onSubmit={handleFormSubmit}>
-          {/* Enhanced upload type selector UI */}
-          <div className="upload-type-selector">
-            <div className={`upload-option ${uploadType === 'url' ? 'active' : ''}`}>
-              <label>
-                <input
-                  type="radio"
-                  name="uploadType"
-                  value="url"
-                  checked={uploadType === 'url'}
-                  onChange={() => {
-                    setUploadType('url');
-                    setSelectedFile(null);
-                  }}
-                />
-                <span className="upload-option-text">
-                  <i className="fas fa-link"></i> Enter URL
-                </span>
-              </label>
-            </div>
-            <div className={`upload-option ${uploadType === 'file' ? 'active' : ''}`}>
-              <label>
-                <input
-                  type="radio"
-                  name="uploadType"
-                  value="file"
-                  checked={uploadType === 'file'}
-                  onChange={() => setUploadType('file')}
-                />
-                <span className="upload-option-text">
-                  <i className="fas fa-upload"></i> Upload File
-                </span>
-              </label>
-            </div>
-          </div>
-          
-          {uploadType === 'url' ? (
-            <label>
-              Image/Video URL:
-              <input
-                type="text"
-                placeholder="Enter image or video URL"
-                value={newPostImg}
-                onChange={(e) => setNewPostImg(e.target.value)}
-                required={uploadType === 'url'}
-              />
-            </label>
-          ) : (
-            <div className="file-upload-container">
-              <label className="file-upload-label">
-                <span>Select File (Image/Video up to 500MB)</span>
-                <input
-                  type="file"
-                  accept="image/*,video/*"
-                  onChange={(e) => {
-                    const file = e.target.files[0];
-                    setSelectedFile(file);
-                    
-                    // Log file info for debugging
-                    if (file) {
-                      console.log('Selected file:', file.name, file.type, file.size);
-                      
-                      // Pre-set the isVideo flag based on MIME type
-                      if (file.type.startsWith('video/')) {
-                        console.log('Video file detected');
-                      }
-                    }
-                  }}
-                  required={uploadType === 'file'}
-                  className="file-input"
-                />
-                {selectedFile && (
-                  <span className="selected-file-name">
-                    {selectedFile.name} ({Math.round(selectedFile.size / 1024 / 1024 * 10) / 10} MB)
-                  </span>
-                )}
-              </label>
-              
-              {isUploading && (
-                <div className="upload-progress">
-                  <div className="progress-bar">
-                    <div 
-                      className="progress-bar-fill" 
-                      style={{ width: `${fileUploadProgress}%` }}
-                    ></div>
-                  </div>
-                  <span>{fileUploadProgress}%</span>
-                </div>
-              )}
-            </div>
-          )}
-          
-          <label>
-            Description:
-            <input
-              type="text"
-              placeholder="Enter description"
-              value={newPostText}
-              onChange={(e) => setNewPostText(e.target.value)}
-              required
-            />
-          </label>
-          
-          <button type="submit" disabled={isUploading}>
-            {isUploading ? 'Uploading...' : (editingPost ? 'Save Changes' : 'Submit Post')}
-          </button>
-          <button 
-            type="button"
-            disabled={isUploading} 
-            onClick={() => {
-              setModalIsOpen(false);
-              setEditingPost(null);
-              setNewPostText('');
-              setNewPostImg('');
-              setSelectedFile(null);
-              setUploadType('url');
-            }}
-          >
-            Cancel
-          </button>
-        </form>
-      </Modal>
-    </div>
+    <>
+      {isAuthenticated ? (
+        <MainApp />
+      ) : (
+        <Auth setIsAuthenticated={setIsAuthenticated} />
+      )}
+    </>
   );
 }
 
