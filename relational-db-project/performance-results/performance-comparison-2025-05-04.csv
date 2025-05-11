@@ -1,0 +1,81 @@
+Scenario,Endpoint,Run #,Execution Time (ms),Response Size (bytes),Success
+"Default (30 days, limit 10)",/api/analytics/content-stats,1,129.54560000000004,0,false
+"Default (30 days, limit 10)",/api/analytics/content-stats-optimized,1,9.339099999999974,0,false
+"Default (30 days, limit 10)",/api/analytics/content-stats,2,17.509199999999964,0,false
+"Default (30 days, limit 10)",/api/analytics/content-stats-optimized,2,21.697200000000066,0,false
+"Default (30 days, limit 10)",/api/analytics/content-stats,3,12.432600000000093,0,false
+"Default (30 days, limit 10)",/api/analytics/content-stats-optimized,3,17.02319999999986,0,false
+"Default (30 days, limit 10)",/api/analytics/content-stats,4,8.562600000000202,0,false
+"Default (30 days, limit 10)",/api/analytics/content-stats-optimized,4,8.431800000000294,0,false
+"Default (30 days, limit 10)",/api/analytics/content-stats,5,14.521299999999883,0,false
+"Default (30 days, limit 10)",/api/analytics/content-stats-optimized,5,9.573899999999867,0,false
+"Default (30 days, limit 10)",/api/analytics/content-stats,6,7.161600000000362,0,false
+"Default (30 days, limit 10)",/api/analytics/content-stats-optimized,6,6.667199999999866,0,false
+"Default (30 days, limit 10)",/api/analytics/content-stats,7,6.603499999999713,0,false
+"Default (30 days, limit 10)",/api/analytics/content-stats-optimized,7,5.159299999999803,0,false
+"Default (30 days, limit 10)",/api/analytics/content-stats,8,16.164600000000064,0,false
+"Default (30 days, limit 10)",/api/analytics/content-stats-optimized,8,6.154599999999846,0,false
+"Default (30 days, limit 10)",/api/analytics/content-stats,9,7.5625,0,false
+"Default (30 days, limit 10)",/api/analytics/content-stats-optimized,9,8.061799999999494,0,false
+"Default (30 days, limit 10)",/api/analytics/content-stats,10,7.16359999999986,0,false
+"Default (30 days, limit 10)",/api/analytics/content-stats-optimized,10,7.242400000000089,0,false
+"Large period (365 days, limit 10)",/api/analytics/content-stats,1,6.014699999999721,0,false
+"Large period (365 days, limit 10)",/api/analytics/content-stats-optimized,1,4.232699999999568,0,false
+"Large period (365 days, limit 10)",/api/analytics/content-stats,2,5.61830000000009,0,false
+"Large period (365 days, limit 10)",/api/analytics/content-stats-optimized,2,5.714699999999539,0,false
+"Large period (365 days, limit 10)",/api/analytics/content-stats,3,7.265400000000227,0,false
+"Large period (365 days, limit 10)",/api/analytics/content-stats-optimized,3,4.136899999999514,0,false
+"Large period (365 days, limit 10)",/api/analytics/content-stats,4,6.339199999999437,0,false
+"Large period (365 days, limit 10)",/api/analytics/content-stats-optimized,4,5.225200000000768,0,false
+"Large period (365 days, limit 10)",/api/analytics/content-stats,5,9.500499999999192,0,false
+"Large period (365 days, limit 10)",/api/analytics/content-stats-optimized,5,7.826799999999821,0,false
+"Large period (365 days, limit 10)",/api/analytics/content-stats,6,7.141999999999825,0,false
+"Large period (365 days, limit 10)",/api/analytics/content-stats-optimized,6,5.045600000001286,0,false
+"Large period (365 days, limit 10)",/api/analytics/content-stats,7,9.911700000000565,0,false
+"Large period (365 days, limit 10)",/api/analytics/content-stats-optimized,7,4.7775000000001455,0,false
+"Large period (365 days, limit 10)",/api/analytics/content-stats,8,10.635200000000623,0,false
+"Large period (365 days, limit 10)",/api/analytics/content-stats-optimized,8,5.611399999999776,0,false
+"Large period (365 days, limit 10)",/api/analytics/content-stats,9,4.990799999999581,0,false
+"Large period (365 days, limit 10)",/api/analytics/content-stats-optimized,9,4.368399999999383,0,false
+"Large period (365 days, limit 10)",/api/analytics/content-stats,10,7.042100000000573,0,false
+"Large period (365 days, limit 10)",/api/analytics/content-stats-optimized,10,4.882499999999709,0,false
+"Large limit (30 days, limit 100)",/api/analytics/content-stats,1,6.616300000001502,0,false
+"Large limit (30 days, limit 100)",/api/analytics/content-stats-optimized,1,7.868099999999686,0,false
+"Large limit (30 days, limit 100)",/api/analytics/content-stats,2,6.451700000001438,0,false
+"Large limit (30 days, limit 100)",/api/analytics/content-stats-optimized,2,5.334199999999328,0,false
+"Large limit (30 days, limit 100)",/api/analytics/content-stats,3,8.626299999999901,0,false
+"Large limit (30 days, limit 100)",/api/analytics/content-stats-optimized,3,4.6260999999994965,0,false
+"Large limit (30 days, limit 100)",/api/analytics/content-stats,4,5.9913999999989755,0,false
+"Large limit (30 days, limit 100)",/api/analytics/content-stats-optimized,4,4.182799999998679,0,false
+"Large limit (30 days, limit 100)",/api/analytics/content-stats,5,6.648800000000847,0,false
+"Large limit (30 days, limit 100)",/api/analytics/content-stats-optimized,5,5.3171000000002095,0,false
+"Large limit (30 days, limit 100)",/api/analytics/content-stats,6,7.5737000000008265,0,false
+"Large limit (30 days, limit 100)",/api/analytics/content-stats-optimized,6,8.545500000000175,0,false
+"Large limit (30 days, limit 100)",/api/analytics/content-stats,7,7.591899999999441,0,false
+"Large limit (30 days, limit 100)",/api/analytics/content-stats-optimized,7,4.439700000000812,0,false
+"Large limit (30 days, limit 100)",/api/analytics/content-stats,8,16.845400000000154,0,false
+"Large limit (30 days, limit 100)",/api/analytics/content-stats-optimized,8,11.337100000000646,0,false
+"Large limit (30 days, limit 100)",/api/analytics/content-stats,9,8.598799999999756,0,false
+"Large limit (30 days, limit 100)",/api/analytics/content-stats-optimized,9,9.190999999998894,0,false
+"Large limit (30 days, limit 100)",/api/analytics/content-stats,10,6.14929999999913,0,false
+"Large limit (30 days, limit 100)",/api/analytics/content-stats-optimized,10,4.4672000000009575,0,false
+"Complex (365 days, limit 50)",/api/analytics/content-stats,1,6.734300000000076,0,false
+"Complex (365 days, limit 50)",/api/analytics/content-stats-optimized,1,4.741600000001199,0,false
+"Complex (365 days, limit 50)",/api/analytics/content-stats,2,6.517100000000937,0,false
+"Complex (365 days, limit 50)",/api/analytics/content-stats-optimized,2,7.340100000001257,0,false
+"Complex (365 days, limit 50)",/api/analytics/content-stats,3,5.476200000000972,0,false
+"Complex (365 days, limit 50)",/api/analytics/content-stats-optimized,3,5.540400000001682,0,false
+"Complex (365 days, limit 50)",/api/analytics/content-stats,4,10.210199999997712,0,false
+"Complex (365 days, limit 50)",/api/analytics/content-stats-optimized,4,6.001799999998184,0,false
+"Complex (365 days, limit 50)",/api/analytics/content-stats,5,5.9395000000004075,0,false
+"Complex (365 days, limit 50)",/api/analytics/content-stats-optimized,5,4.008399999998801,0,false
+"Complex (365 days, limit 50)",/api/analytics/content-stats,6,9.536599999999453,0,false
+"Complex (365 days, limit 50)",/api/analytics/content-stats-optimized,6,8.200300000000425,0,false
+"Complex (365 days, limit 50)",/api/analytics/content-stats,7,4.666699999997945,0,false
+"Complex (365 days, limit 50)",/api/analytics/content-stats-optimized,7,3.9695000000028813,0,false
+"Complex (365 days, limit 50)",/api/analytics/content-stats,8,5.421200000000681,0,false
+"Complex (365 days, limit 50)",/api/analytics/content-stats-optimized,8,4.371200000001409,0,false
+"Complex (365 days, limit 50)",/api/analytics/content-stats,9,4.9932000000007974,0,false
+"Complex (365 days, limit 50)",/api/analytics/content-stats-optimized,9,6.31619999999748,0,false
+"Complex (365 days, limit 50)",/api/analytics/content-stats,10,5.09519999999975,0,false
+"Complex (365 days, limit 50)",/api/analytics/content-stats-optimized,10,4.635400000002846,0,false
