@@ -12,16 +12,47 @@ const SERVER_URL = 'http://192.168.0.100:5003';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
     // Check for token in localStorage (or sessionStorage)
     const token = localStorage.getItem('token');
     setIsAuthenticated(!!token);
+    Modal.setAppElement('#root');
+    
+    // If authenticated, fetch user data
+    if (token) {
+      fetchUserData();
+    }
   }, []);
 
-  useEffect(() => {
-    Modal.setAppElement('#root');
-  }, []);
+  const fetchUserData = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    
+    try {
+      const response = await fetch(`${SERVER_URL}/api/users/me`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const userData = await response.json();
+        setCurrentUser(userData);
+      }
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    setIsAuthenticated(false);
+    setCurrentUser(null);
+    // Redirect to login if needed
+  };
 
   const [posts, setPosts] = useState([]); // Stores posts
   const [modalIsOpen, setModalIsOpen] = useState(false); // Modal state
@@ -753,7 +784,139 @@ function App() {
   return (
     <>
       {isAuthenticated ? (
-        <MainApp />
+        <div className="App">
+          <aside className="App-sidebar">
+            <div className="sidebar-item">Main Screen</div>
+            <div className="sidebar-item">Explore</div>
+            <div className="sidebar-item">Notifications</div>
+            <div className="sidebar-item">Messages</div>
+            {isAuthenticated && (
+              <div className="user-profile-section">
+                {currentUser && (
+                  <>
+                    <div className="user-info">
+                      <div className="user-avatar">
+                        {currentUser.username && currentUser.username[0].toUpperCase()}
+                      </div>
+                      <div className="user-details">
+                        <p className="username">{currentUser.username}</p>
+                        <p className="user-email">{currentUser.email}</p>
+                      </div>
+                    </div>
+                    <button className="logout-btn" onClick={handleLogout}>
+                      <i className="fas fa-sign-out-alt"></i> Log Out
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </aside>
+          <main className="App-main">
+            <div className="buttons">
+              <button onClick={() => setModalIsOpen(true)}>Add Post</button>
+              <div className="sort-options">
+                <button onClick={() => handleSort('asc')}>Sort A-Z</button>
+                <button onClick={() => handleSort('desc')}>Sort Z-A</button>
+              </div>
+              <input
+                type="text"
+                placeholder="Search posts"
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div id="posts-container">
+              {filteredPosts.map((post) => (
+                <div key={post.id} className="post">
+                  <p>{post.text}</p>
+                  <p className="post-date">{post.date}</p>
+                  <img src={post.img} alt="Post content" className="post-media" />
+                  <div className="post-actions">
+                    <button className="action-btn delete-btn" onClick={() => deletePost(post.id)}>Delete</button>
+                    <button className="action-btn edit-btn" onClick={() => startEditingPost(post.id)}>Edit</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </main>
+          <aside className="App-sidebar-right">
+            <div className="sidebar-item">
+              <h3>Statistics</h3>
+              <table className="statistics-table">
+                <tbody>
+                  <tr>
+                    <td>Total Posts:</td>
+                    <td>{totalPosts}</td>
+                  </tr>
+                  <tr>
+                    <td>Short Descriptions (0-4 words):</td>
+                    <td>{shortDescriptions}</td>
+                  </tr>
+                  <tr>
+                    <td>Medium Descriptions (5-20 words):</td>
+                    <td>{mediumDescriptions}</td>
+                  </tr>
+                  <tr>
+                    <td>Long Descriptions (20+ words):</td>
+                    <td>{longDescriptions}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div className="sidebar-item generator-panel">
+              <h3>Post Generator</h3>
+              <div className="generator-buttons">
+                <button
+                  className="generator-start-btn"
+                  onClick={handleStartGenerator}
+                  disabled={isGenerating}
+                >
+                  Start Generator
+                </button>
+                <button
+                  className="generator-stop-btn"
+                  onClick={handleStopGenerator}
+                  disabled={!isGenerating}
+                >
+                  Stop Generator
+                </button>
+              </div>
+              <div className="generator-status">
+                <strong>Generator Status:</strong> {isGenerating ? "Running" : "Stopped"}
+              </div>
+              <div className="generator-stats">
+                <strong>Generated:</strong>
+                <ul>
+                  <li>Links: {generationStats.link}</li>
+                  <li>Photos: {generationStats.photo}</li>
+                  <li>Videos: {generationStats.video}</li>
+                </ul>
+              </div>
+            </div>
+          </aside>
+          {/* Modal for adding posts */}
+          <Modal isOpen={modalIsOpen} onRequestClose={() => setModalIsOpen(false)}>
+            <h2>Add a new post</h2>
+            <form onSubmit={e => { e.preventDefault(); addPost(); }}>
+              <input
+                type="text"
+                placeholder="Description"
+                value={newPostText}
+                onChange={e => setNewPostText(e.target.value)}
+                required
+              />
+              <input
+                type="text"
+                placeholder="Image URL"
+                value={newPostImg}
+                onChange={e => setNewPostImg(e.target.value)}
+                required
+              />
+              <button type="submit">Submit Post</button>
+              <button type="button" onClick={() => setModalIsOpen(false)}>Cancel</button>
+            </form>
+          </Modal>
+        </div>
       ) : (
         <Auth setIsAuthenticated={setIsAuthenticated} />
       )}
