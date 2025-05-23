@@ -15,7 +15,7 @@ const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
 
 const app = express();
-const PORT = 5003
+const PORT = process.env.PORT || 5003
 
 // Create HTTP server instance from Express app
 const server = http.createServer(app);
@@ -536,6 +536,11 @@ app.post('/sync', express.json({ limit: '50mb' }), (req, res) => {
   
   res.json({ results, errors });
 });
+
+// Add this to your server.js if it's not already there
+sequelize.sync({ alter: true })
+  .then(() => console.log('Database synchronized'))
+  .catch(err => console.error('Failed to sync database:', err));
 
 // Initialize database and start monitoring
 async function initializeApp() {
