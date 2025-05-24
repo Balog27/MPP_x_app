@@ -8,7 +8,19 @@ import MainApp from './MainApp'; // your main app component
 import Auth from './components/Auth'; // your login/register component
 
 // Define SERVER_URL as a constant at the top level
-const SERVER_URL = 'http://192.168.0.100:5003';
+//const SERVER_URL = 'https://mppxapp-production.up.railway.app:8080';
+
+// For regular API endpoints
+const API_URL = 'https://mppxapp-production.up.railway.app';
+const SERVER_URL = 'https://mppxapp-production.up.railway.app';
+const WS_URL = 'wss://mppxapp-production.up.railway.app';
+fetch(`${API_URL}/posts`)
+  .then(response => response.json())
+  .then(data => console.log(data));
+
+// For WebSocket
+
+const socket = new WebSocket(WS_URL);
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
