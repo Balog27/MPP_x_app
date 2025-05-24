@@ -13,13 +13,26 @@ import Auth from './components/Auth'; // your login/register component
 // For regular API endpoints
 const API_URL = 'https://mppxapp-production.up.railway.app';
 const SERVER_URL = 'https://mppxapp-production.up.railway.app';
-const WS_URL = 'wss://mppxapp-production.up.railway.app';
+// Change this if WebSocket is on a different path
+const WS_URL = 'wss://mppxapp-production.up.railway.app/socket';
 fetch(`${API_URL}/posts`)
   .then(response => response.json())
   .then(data => console.log(data));
 
-// For WebSocket
+// Add this after your constants
+console.log('Connecting to API:', API_URL);
+console.log('Connecting to WebSocket:', WS_URL);
 
+// Test API connection
+fetch(`${API_URL}/`)
+  .then(response => {
+    console.log('API connection successful:', response.status);
+    return response.text();
+  })
+  .then(data => console.log('API response:', data))
+  .catch(error => console.error('API connection failed:', error));
+
+// For WebSocket
 const socket = new WebSocket(WS_URL);
 
 function App() {

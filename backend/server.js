@@ -214,7 +214,7 @@ const upload = multer({
 
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || '*',  // Set your frontend URL in production
+  origin: process.env.FRONTEND_URL || '*', 
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
