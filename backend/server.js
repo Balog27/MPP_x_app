@@ -32,6 +32,17 @@ let generationStats = {
   video: 0
 };
 
+// Add before other middleware
+if (process.env.NODE_ENV === 'production') {
+  // Set security headers
+  app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    next();
+  });
+}
+
 // Set up WebSocket connection handler
 wss.on('connection', (ws) => {
   console.log('Client connected to WebSocket');
@@ -203,10 +214,11 @@ const upload = multer({
 
 // Middleware
 app.use(cors({
-  origin: '*', // Allow requests from any origin during development
+  origin: process.env.FRONTEND_URL || '*',  // Set your frontend URL in production
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-})); 
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
 app.use(bodyParser.json()); // Parse JSON bodies
 
 // Serve static files from uploads directory
@@ -413,8 +425,8 @@ app.post('/upload', upload.single('file'), (req, res) => {
     return res.status(400).json({ error: 'No file uploaded' });
   }
   
-  // Use the requesting host (this will be your server's actual IP)
-  const host = req.headers.host.split(':')[0];
+  // Use environment variable for base URL in production
+  const baseUrl = process.env.BASE_URL || `http://${req.headers.host}`;
   
   // Return the file details including URL to access it
   res.status(201).json({
@@ -422,7 +434,7 @@ app.post('/upload', upload.single('file'), (req, res) => {
     originalname: req.file.originalname,
     mimetype: req.file.mimetype,
     size: req.file.size,
-    url: `http://${host}:${PORT}/uploads/${req.file.filename}`
+    url: `${baseUrl}/uploads/${req.file.filename}`
   });
 });
 
@@ -433,11 +445,11 @@ app.get('/files', (req, res) => {
       return res.status(500).json({ error: 'Failed to read files directory' });
     }
     
-    const host = req.headers.host.split(':')[0];
+    const baseUrl = process.env.BASE_URL || `http://${req.headers.host}`;
     
     const fileList = files.map(filename => ({
       filename,
-      url: `http://${host}:${PORT}/uploads/${filename}`
+      url: `${baseUrl}/uploads/${filename}`
     }));
     
     res.json(fileList);
