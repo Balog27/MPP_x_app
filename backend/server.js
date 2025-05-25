@@ -430,7 +430,8 @@ app.post('/upload', upload.single('file'), (req, res) => {
   }
   
   // Use environment variable for base URL in production
-  const baseUrl = process.env.BASE_URL || `http://${req.headers.host}`;
+  const baseUrl = process.env.BASE_URL || 
+    (req.secure ? 'https://' : 'http://') + req.headers.host;
   
   // Return the file details including URL to access it
   res.status(201).json({
@@ -449,7 +450,8 @@ app.get('/files', (req, res) => {
       return res.status(500).json({ error: 'Failed to read files directory' });
     }
     
-    const baseUrl = process.env.BASE_URL || `http://${req.headers.host}`;
+    const baseUrl = process.env.BASE_URL || 
+      (req.secure ? 'https://' : 'http://') + req.headers.host;
     
     const fileList = files.map(filename => ({
       filename,
