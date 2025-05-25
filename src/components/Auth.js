@@ -8,12 +8,14 @@ function Auth({ setIsAuthenticated }) {
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
 
+  const API_URL = process.env.REACT_APP_API_URL || 'https://mppxapp-production.up.railway.app';
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     const url = isLogin
-      ? 'http://192.168.0.100:5003/api/auth/login'
-      : 'http://192.168.0.100:5003/api/auth/register';
+        ? `${API_URL}/api/auth/login`
+        : `${API_URL}/api/auth/register`;
     const body = isLogin
       ? { email, password }
       : { username, email, password };

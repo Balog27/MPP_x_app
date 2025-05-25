@@ -430,7 +430,7 @@ app.post('/upload', upload.single('file'), (req, res) => {
   }
   
   // Use environment variable for base URL in production
-  const baseUrl = process.env.BASE_URL || `http://${req.headers.host}`;
+  const baseUrl = process.env.BASE_URL || `https://${req.headers.host}`;
   
   // Return the file details including URL to access it
   res.status(201).json({
