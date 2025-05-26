@@ -13,6 +13,7 @@ const monitoringService = require('./services/monitoringService');
 // Import routes
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
+const twoFactorRoutes = require('./routes/twoFactor');
 
 const app = express();
 const PORT = process.env.PORT || 5003
@@ -231,6 +232,7 @@ app.get('/', (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/2fa', twoFactorRoutes);
 
 // In-memory data storage
 let posts = [];

@@ -1,6 +1,7 @@
 // src/components/Auth.js
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import TwoFactorVerify from './TwoFactorVerify';
 import './Auth.css';
 
 function Auth() {
@@ -8,18 +9,32 @@ function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { login, register, error } = useAuth();
+  const { 
+    login, 
+    register, 
+    error, 
+    requiresTwoFactor 
+  } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
     
     if (isLogin) {
       await login(email, password);
     } else {
       await register(username, email, password);
     }
+    
+    setIsSubmitting(false);
   };
+
+  // If 2FA is required after login, show the verification component
+  if (requiresTwoFactor) {
+    return <TwoFactorVerify />;
+  }
 
   return (
     <div className="auth-container">
@@ -49,9 +64,14 @@ function Auth() {
           onChange={e => setPassword(e.target.value)}
           required
         />
-        <button type="submit">{isLogin ? 'Login' : 'Register'}</button>
+        <button 
+          type="submit"
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? 'Processing...' : (isLogin ? 'Login' : 'Register')}
+        </button>
       </form>
-      <button onClick={() => setIsLogin(!isLogin)}>
+      <button onClick={() => setIsLogin(!isLogin)} className="toggle-auth">
         {isLogin ? 'Need an account? Register' : 'Already have an account? Login'}
       </button>
     </div>

@@ -1,0 +1,80 @@
+.two-factor-setup-container {
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.two-factor-setup-container h2,
+.two-factor-setup-container h3 {
+  color: #333;
+  margin-bottom: 16px;
+}
+
+.two-factor-loading {
+  text-align: center;
+  padding: 20px;
+  font-size: 16px;
+  color: #555;
+}
+
+.setup-instructions {
+  text-align: center;
+}
+
+.qr-container {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0;
+}
+
+.qr-container img {
+  max-width: 200px;
+  border: 1px solid #ddd;
+  padding: 10px;
+  background-color: white;
+}
+
+.secret-key {
+  font-family: monospace;
+  font-size: 18px;
+  background-color: #f5f5f5;
+  padding: 10px;
+  border-radius: 4px;
+  margin: 20px 0;
+  word-break: break-all;
+}
+
+.setup-instructions form {
+  margin-top: 20px;
+}
+
+.setup-instructions input {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  font-size: 18px;
+  text-align: center;
+  letter-spacing: 4px;
+  margin-bottom: 16px;
+  border: 2px solid #ddd;
+  border-radius: 4px;
+}
+
+.setup-instructions button {
+  width: 100%;
+  padding: 12px;
+  background-color: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.setup-success {
+  text-align: center;
+  padding: 20px;
+  background-color: #e7f5ea;
+  border-radius: 4px;
+}

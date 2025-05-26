@@ -11,6 +11,8 @@ export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [requiresTwoFactor, setRequiresTwoFactor] = useState(false);
+  const [tempToken, setTempToken] = useState(null);
 
   useEffect(() => {
     // Check if the user is logged in
@@ -60,17 +62,61 @@ export const AuthProvider = ({ children }) => {
       
       const data = await response.json();
       
-      if (response.ok && data.token) {
-        localStorage.setItem('token', data.token);
-        setCurrentUser(data.user);
-        return true;
+      if (response.ok) {
+        if (data.requiresTwoFactor) {
+          // If 2FA is required, store the temporary token and set the flag
+          setRequiresTwoFactor(true);
+          setTempToken(data.tempToken);
+          setCurrentUser({
+            id: data.user.id,
+            username: data.user.username
+          });
+          return { requiresTwoFactor: true };
+        } else if (data.token) {
+          // Regular login success
+          localStorage.setItem('token', data.token);
+          setCurrentUser(data.user);
+          return { success: true };
+        }
       } else {
         setError(data.error || 'Login failed');
-        return false;
+        return { error: data.error || 'Login failed' };
       }
     } catch (error) {
       setError('Network error. Please try again later.');
-      return false;
+      return { error: 'Network error. Please try again later.' };
+    }
+  };
+
+  const validateTwoFactor = async (token) => {
+    try {
+      setError(null);
+      const response = await fetch(`${API_URL}/api/2fa/validate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          tempToken: tempToken,
+          token: token
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok && data.token) {
+        localStorage.setItem('token', data.token);
+        setCurrentUser(data.user);
+        setRequiresTwoFactor(false);
+        setTempToken(null);
+        return { success: true };
+      } else {
+        setError(data.error || 'Invalid 2FA token');
+        return { error: data.error || 'Invalid 2FA token' };
+      }
+    } catch (error) {
+      setError('Network error. Please try again later.');
+      return { error: 'Network error. Please try again later.' };
     }
   };
 
@@ -90,14 +136,14 @@ export const AuthProvider = ({ children }) => {
       if (response.ok && data.token) {
         localStorage.setItem('token', data.token);
         setCurrentUser(data.user);
-        return true;
+        return { success: true };
       } else {
         setError(data.error || 'Registration failed');
-        return false;
+        return { error: data.error || 'Registration failed' };
       }
     } catch (error) {
       setError('Network error. Please try again later.');
-      return false;
+      return { error: 'Network error. Please try again later.' };
     }
   };
 
@@ -117,6 +163,114 @@ export const AuthProvider = ({ children }) => {
     } finally {
       localStorage.removeItem('token');
       setCurrentUser(null);
+      setRequiresTwoFactor(false);
+      setTempToken(null);
+    }
+  };
+
+  // 2FA setup
+  const setupTwoFactor = async () => {
+    try {
+      setError(null);
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        setError('Authentication required');
+        return { error: 'Authentication required' };
+      }
+      
+      const response = await fetch(`${API_URL}/api/2fa/setup`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        return { 
+          success: true,
+          secret: data.secret,
+          qrCode: data.qrCode
+        };
+      } else {
+        setError(data.error || 'Failed to setup 2FA');
+        return { error: data.error || 'Failed to setup 2FA' };
+      }
+    } catch (error) {
+      setError('Network error. Please try again later.');
+      return { error: 'Network error. Please try again later.' };
+    }
+  };
+
+  const verifyTwoFactorSetup = async (token) => {
+    try {
+      setError(null);
+      const authToken = localStorage.getItem('token');
+      
+      if (!authToken) {
+        setError('Authentication required');
+        return { error: 'Authentication required' };
+      }
+      
+      const response = await fetch(`${API_URL}/api/2fa/verify-setup`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ token })
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        // Update user data with 2FA enabled
+        await fetchUserData(authToken);
+        return { success: true };
+      } else {
+        setError(data.error || 'Failed to verify 2FA token');
+        return { error: data.error || 'Failed to verify 2FA token' };
+      }
+    } catch (error) {
+      setError('Network error. Please try again later.');
+      return { error: 'Network error. Please try again later.' };
+    }
+  };
+
+  const disableTwoFactor = async (token) => {
+    try {
+      setError(null);
+      const authToken = localStorage.getItem('token');
+      
+      if (!authToken) {
+        setError('Authentication required');
+        return { error: 'Authentication required' };
+      }
+      
+      const response = await fetch(`${API_URL}/api/2fa/disable`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ token })
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        // Update user data with 2FA disabled
+        await fetchUserData(authToken);
+        return { success: true };
+      } else {
+        setError(data.error || 'Failed to disable 2FA');
+        return { error: data.error || 'Failed to disable 2FA' };
+      }
+    } catch (error) {
+      setError('Network error. Please try again later.');
+      return { error: 'Network error. Please try again later.' };
     }
   };
 
@@ -129,7 +283,12 @@ export const AuthProvider = ({ children }) => {
         login,
         register,
         logout,
-        isAuthenticated: !!currentUser
+        isAuthenticated: !!currentUser && !requiresTwoFactor,
+        requiresTwoFactor,
+        validateTwoFactor,
+        setupTwoFactor,
+        verifyTwoFactorSetup,
+        disableTwoFactor
       }}
     >
       {children}

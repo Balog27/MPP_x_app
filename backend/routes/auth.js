@@ -60,7 +60,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// Login
+// Login - Update to handle 2FA
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -80,9 +80,40 @@ router.post('/login', async (req, res) => {
     // Update last login
     await user.update({ lastLogin: new Date() });
 
-    // Generate token
+    // Check if 2FA is enabled
+    if (user.twoFactorEnabled) {
+      // Create a temporary token for 2FA validation
+      const tempToken = jwt.sign({ id: user.id, temp: true }, JWT_SECRET, {
+        expiresIn: '5m' // Short expiry for security
+      });
+      
+      // Store the temporary token
+      await user.update({ tempToken });
+
+      // Log the login attempt awaiting 2FA
+      await monitoringService.logActivity(
+        user.id,
+        'READ',
+        'User',
+        user.id,
+        'User login awaiting 2FA',
+        req
+      );
+
+      // Return temporary token and 2FA required flag
+      return res.json({
+        user: {
+          id: user.id,
+          username: user.username
+        },
+        requiresTwoFactor: true,
+        tempToken
+      });
+    }
+
+    // If 2FA is not enabled, generate a regular token
     const token = jwt.sign({ id: user.id }, JWT_SECRET, {
-      expiresIn: '7d' // Token expires in 7 days
+      expiresIn: '7d'
     });
     
     // Log the login
@@ -109,7 +140,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Get current user profile
+// Get current user profile - Add 2FA status
 router.get('/me', auth, async (req, res) => {
   try {
     res.json({
@@ -117,7 +148,8 @@ router.get('/me', auth, async (req, res) => {
       username: req.user.username,
       email: req.user.email,
       role: req.user.role,
-      lastLogin: req.user.lastLogin
+      lastLogin: req.user.lastLogin,
+      twoFactorEnabled: req.user.twoFactorEnabled
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

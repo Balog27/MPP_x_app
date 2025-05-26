@@ -3,6 +3,7 @@ import './App.css';
 import Auth from './components/Auth';
 import Modal from 'react-modal';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import TwoFactorManagement from './components/TwoFactorManagement';
 
 // Define SERVER_URL as a constant at the top level
 const SERVER_URL = process.env.REACT_APP_API_URL || 'https://mppxapp-production.up.railway.app'; 
@@ -20,6 +21,9 @@ function App() {
 // App content using authentication
 function AppContent() {
   const { isAuthenticated, currentUser, logout } = useAuth();
+  
+  // Add this state for 2FA management modal
+  const [showTwoFactorModal, setShowTwoFactorModal] = React.useState(false);
   
   // Rest of your state management
   const [modalIsOpen, setModalIsOpen] = React.useState(false);
@@ -770,7 +774,9 @@ function AppContent() {
                         <p className="user-email">{currentUser.email}</p>
                       </div>
                     </div>
-                    <button className="logout-btn" onClick={handleLogout}>
+                    {/* Add 2FA option here */}
+                    {renderTwoFactorOption()}
+                    <button className="logout-btn" onClick={logout}>
                       <i className="fas fa-sign-out-alt"></i> Log Out
                     </button>
                   </>
@@ -882,6 +888,21 @@ function AppContent() {
               <button type="submit">Submit Post</button>
               <button type="button" onClick={() => setModalIsOpen(false)}>Cancel</button>
             </form>
+          </Modal>
+          {/* Modal for Two-Factor Authentication management */}
+          <Modal 
+            isOpen={showTwoFactorModal} 
+            onRequestClose={() => setShowTwoFactorModal(false)}
+            className="two-factor-modal"
+            overlayClassName="modal-overlay"
+          >
+            <button 
+              className="close-button" 
+              onClick={() => setShowTwoFactorModal(false)}
+            >
+              &times;
+            </button>
+            <TwoFactorManagement />
           </Modal>
         </div>
       ) : (

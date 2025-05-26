@@ -35,6 +35,20 @@ module.exports = (sequelize) => {
     },
     lastLogin: {
       type: DataTypes.DATE
+    },
+    // Add 2FA fields
+    twoFactorSecret: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    twoFactorEnabled: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
+    },
+    // Optional temporary token to hold logged in state while waiting for 2FA
+    tempToken: {
+      type: DataTypes.STRING,
+      allowNull: true
     }
   }, {
     hooks: {
@@ -56,4 +70,4 @@ module.exports = (sequelize) => {
   };
 
   return User;
-}; 
+};

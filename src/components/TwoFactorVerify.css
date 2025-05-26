@@ -1,0 +1,60 @@
+.two-factor-container {
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.two-factor-container h2 {
+  color: #333;
+  margin-bottom: 16px;
+}
+
+.two-factor-container p {
+  color: #555;
+  margin-bottom: 20px;
+}
+
+.two-factor-container input {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  font-size: 18px;
+  text-align: center;
+  letter-spacing: 4px;
+  margin-bottom: 16px;
+  border: 2px solid #ddd;
+  border-radius: 4px;
+}
+
+.two-factor-container button {
+  width: 100%;
+  padding: 12px;
+  background-color: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.two-factor-container button:hover {
+  background-color: #3a80d2;
+}
+
+.two-factor-container button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.error-message {
+  color: #e74c3c;
+  margin-bottom: 16px;
+  padding: 10px;
+  background-color: #fdecea;
+  border-radius: 4px;
+}
