@@ -8,16 +8,17 @@ const auth = async (req, res, next) => {
     const token = req.header('Authorization')?.replace('Bearer ', '');
     
     if (!token) {
-      throw new Error();
+      return res.status(401).json({ error: 'Authentication required' });
     }
 
     const decoded = jwt.verify(token, JWT_SECRET);
     const user = await User.findOne({ where: { id: decoded.id } });
 
     if (!user) {
-      throw new Error();
+      return res.status(401).json({ error: 'Invalid authentication token' });
     }
 
+    // Set user and token in request for route handlers
     req.token = token;
     req.user = user;
     next();
@@ -35,8 +36,8 @@ const adminAuth = async (req, res, next) => {
       next();
     });
   } catch (error) {
-    res.status(401).json({ error: 'Please authenticate.' });
+    // Error is already handled by auth middleware
   }
 };
 
-module.exports = { auth, adminAuth, JWT_SECRET }; 
+module.exports = { auth, adminAuth, JWT_SECRET };

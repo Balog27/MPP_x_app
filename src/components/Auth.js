@@ -1,46 +1,30 @@
 // src/components/Auth.js
 import React, { useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import './Auth.css';
 
-function Auth({ setIsAuthenticated }) {
+function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
-  const [error, setError] = useState('');
 
-  const API_URL = process.env.REACT_APP_API_URL || 'https://mppxapp-production.up.railway.app';
+  const { login, register, error } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    const url = isLogin
-        ? `${API_URL}/api/auth/login`
-        : `${API_URL}/api/auth/register`;
-    const body = isLogin
-      ? { email, password }
-      : { username, email, password };
-
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (res.ok && data.token) {
-        localStorage.setItem('token', data.token);
-        setIsAuthenticated(true);
-      } else {
-        setError(data.error || 'Authentication failed');
-      }
-    } catch (err) {
-      setError('Network error');
+    
+    if (isLogin) {
+      await login(email, password);
+    } else {
+      await register(username, email, password);
     }
   };
 
   return (
     <div className="auth-container">
       <h2>{isLogin ? 'Login' : 'Register'}</h2>
+      {error && <div className="error-message">{error}</div>}
       <form onSubmit={handleSubmit}>
         {!isLogin && (
           <input
@@ -70,7 +54,6 @@ function Auth({ setIsAuthenticated }) {
       <button onClick={() => setIsLogin(!isLogin)}>
         {isLogin ? 'Need an account? Register' : 'Already have an account? Login'}
       </button>
-      {error && <div className="auth-error">{error}</div>}
     </div>
   );
 }

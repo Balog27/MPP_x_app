@@ -9,10 +9,10 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 // Configuration - adjust these values as needed
-
+// For massive data, use these values:
 let TOTAL_USERS = 50;
-let TOTAL_POSTS = 200;
-let TOTAL_TAGS = 10;
+let TOTAL_POSTS = 100;
+let TOTAL_TAGS = 50;
 let BATCH_SIZE = 50;
 
 async function generateMassiveData() {
@@ -22,6 +22,10 @@ async function generateMassiveData() {
   const t = await sequelize.transaction();
   
   try {
+    // First, get the User model definition to check available fields
+    const userModel = User.getAttributes();
+    console.log('User model fields:', Object.keys(userModel));
+    
     // 1. Generate Tags
     console.log(`\nGenerating ${TOTAL_TAGS} tags...`);
     const tagBar = new ProgressBar(':bar :current/:total (:percent)', { total: TOTAL_TAGS, width: 40 });
@@ -49,22 +53,38 @@ async function generateMassiveData() {
     
     const users = [];
     for (let i = 0; i < TOTAL_USERS; i++) {
-      users.push({
-        username: faker.internet.userName(),
+      // Create a user object with only the fields your schema has
+      const user = {
+        username: faker.internet.username(),
         email: faker.internet.email(),
         password: faker.internet.password(),
-        firstName: faker.person.firstName(),
-        lastName: faker.person.lastName(),
         isAdmin: Math.random() > 0.9, // 10% chance to be admin
         lastLogin: faker.date.past(),
         createdAt: new Date(),
         updatedAt: new Date()
-      });
+      };
+      
+      // Only add these fields if they exist in your schema
+      if (userModel.firstName) user.firstName = faker.person.firstName();
+      if (userModel.lastName) user.lastName = faker.person.lastName();
+      
+      users.push(user);
       userBar.tick();
     }
     
     console.log('Inserting users into database...');
-    const createdUsers = await User.bulkCreate(users, { transaction: t });
+    // Use a smaller batch size for users to avoid memory issues
+    const userBatchSize = 1000;
+    const totalUserBatches = Math.ceil(users.length / userBatchSize);
+    let createdUsers = [];
+    
+    for (let i = 0; i < totalUserBatches; i++) {
+      const batch = users.slice(i * userBatchSize, (i + 1) * userBatchSize);
+      const batchResult = await User.bulkCreate(batch, { transaction: t });
+      createdUsers = createdUsers.concat(batchResult);
+      console.log(`User batch ${i + 1}/${totalUserBatches} completed.`);
+    }
+    
     console.log(`Created ${createdUsers.length} users.`);
     
     // 3. Generate Posts in batches
@@ -134,7 +154,7 @@ async function generateMassiveData() {
   }
 }
 
-// Only run this function if this script is executed directly
+// Main execution logic
 if (require.main === module) {
   console.log('===== MASSIVE DATA GENERATOR =====');
   
@@ -145,31 +165,52 @@ if (require.main === module) {
   if (smallRun) {
     console.log('Running in SMALL mode (fewer records)');
     // Override the constants for a small run
-    TOTAL_USERS = 5;
-    TOTAL_POSTS = 10;
-    TOTAL_TAGS = 3;
+    TOTAL_USERS = 10;
+    TOTAL_POSTS = 50;
+    TOTAL_TAGS = 5;
     BATCH_SIZE = 10;
   }
   
-  generateMassiveData()
-    .then((stats) => {
-      console.log('\nData generation completed successfully!');
-      console.log('Statistics:', stats);
-      
-      // Make sure to close connection cleanly
-      return sequelize.close();
-    })
-    .then(() => {
-      console.log('Database connection closed.');
-      process.exit(0);
-    })
-    .catch(error => {
-      console.error('\nFailed to generate data:', error);
-      // Still need to close connection on error
-      sequelize.close()
-        .then(() => process.exit(1))
-        .catch(() => process.exit(1));
-    });
+  // For testing database schema
+  const debugSchema = args.includes('--debug-schema');
+  if (debugSchema) {
+    (async () => {
+      try {
+        // Print schema information
+        const userModel = User.getAttributes();
+        console.log('User model fields:', Object.keys(userModel));
+        const postModel = Post.getAttributes();
+        console.log('Post model fields:', Object.keys(postModel));
+        const tagModel = Tag.getAttributes();
+        console.log('Tag model fields:', Object.keys(tagModel));
+        process.exit(0);
+      } catch (error) {
+        console.error('Error inspecting schema:', error);
+        process.exit(1);
+      }
+    })();
+  } else {
+    // Run normal data generation
+    generateMassiveData()
+      .then((stats) => {
+        console.log('\nData generation completed successfully!');
+        console.log('Statistics:', stats);
+        
+        // Make sure to close connection cleanly
+        return sequelize.close();
+      })
+      .then(() => {
+        console.log('Database connection closed.');
+        process.exit(0);
+      })
+      .catch(error => {
+        console.error('\nFailed to generate data:', error);
+        // Still need to close connection on error
+        sequelize.close()
+          .then(() => process.exit(1))
+          .catch(() => process.exit(1));
+      });
+  }
 }
 
 module.exports = generateMassiveData;

@@ -1,106 +1,51 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import Modal from 'react-modal';
+import React from 'react';
 import './App.css';
-import '@fortawesome/fontawesome-free/css/all.min.css';
-import WebSocketService from './webSocketService';
-import GeneratorControlPanel from './components/GeneratorControlPanel';
-import MainApp from './MainApp'; // your main app component
-import Auth from './components/Auth'; // your login/register component
+import Auth from './components/Auth';
+import Modal from 'react-modal';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 // Define SERVER_URL as a constant at the top level
-const API_URL = 'https://mppxapp-production.up.railway.app';
-const SERVER_URL = 'https://mppxapp-production.up.railway.app'; 
-const WS_URL = 'wss://mppxapp-production.up.railway.app';
+const SERVER_URL = process.env.REACT_APP_API_URL || 'https://mppxapp-production.up.railway.app'; 
+const WS_URL = process.env.REACT_APP_WS_URL || 'wss://mppxapp-production.up.railway.app';
 
-fetch(`${API_URL}/api/posts`)
-  .then(response => response.json())
-  .then(data => console.log(data));
-
-// Add this after your constants
-console.log('Connecting to API:', API_URL);
-console.log('Connecting to WebSocket:', WS_URL);
-
-// Test API connection
-fetch(`${API_URL}/`)
-  .then(response => {
-    console.log('API connection successful:', response.status);
-    return response.text();
-  })
-  .then(data => console.log('API response:', data))
-  .catch(error => console.error('API connection failed:', error));
-
-// For WebSocket
-const socket = new WebSocket(WS_URL);
-
+// Main App wrapped with Auth Provider
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
+}
 
-  useEffect(() => {
-    // Check for token in localStorage (or sessionStorage)
-    const token = localStorage.getItem('token');
-    setIsAuthenticated(!!token);
-    Modal.setAppElement('#root');
-    
-    // If authenticated, fetch user data
-    if (token) {
-      fetchUserData();
-    }
-  }, []);
-
-  const fetchUserData = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-    
-    try {
-      const response = await fetch(`${SERVER_URL}/api/users/me`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (response.ok) {
-        const userData = await response.json();
-        setCurrentUser(userData);
-      }
-    } catch (error) {
-      console.error('Error fetching user data:', error);
-    }
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    setIsAuthenticated(false);
-    setCurrentUser(null);
-    // Redirect to login if needed
-  };
-
-  const [posts, setPosts] = useState([]); // Stores posts
-  const [modalIsOpen, setModalIsOpen] = useState(false); // Modal state
-  const [newPostText, setNewPostText] = useState(''); // New post text
-  const [newPostImg, setNewPostImg] = useState(''); // New post image
-  const [menuOpen, setMenuOpen] = useState(null); // Menu state
-  const [searchTerm, setSearchTerm] = useState(''); // Search term
-  const [sortOrder, setSortOrder] = useState(''); // Sort order
-  const [isNetworkDown, setIsNetworkDown] = useState(false); // Tracks network status
-  const [isServerDown, setIsServerDown] = useState(false); // Tracks server status
-  const [offlineQueue, setOfflineQueue] = useState([]); // Stores offline operations
-  const [editingPost, setEditingPost] = useState(null); // Track which post is being edited
-  const [serverRestartDetected, setServerRestartDetected] = useState(false);
-  const [uploadType, setUploadType] = useState('url'); // 'url' or 'file'
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [fileUploadProgress, setFileUploadProgress] = useState(0);
-  const [isUploading, setIsUploading] = useState(false);
+// App content using authentication
+function AppContent() {
+  const { isAuthenticated, currentUser, logout } = useAuth();
+  
+  // Rest of your state management
+  const [modalIsOpen, setModalIsOpen] = React.useState(false);
+  const [posts, setPosts] = React.useState([]);
+  const [newPostText, setNewPostText] = React.useState(''); // New post text
+  const [newPostImg, setNewPostImg] = React.useState(''); // New post image
+  const [searchTerm, setSearchTerm] = React.useState(''); // Search term
+  const [sortOrder, setSortOrder] = React.useState(''); // Sort order
+  const [isNetworkDown, setIsNetworkDown] = React.useState(false); // Tracks network status
+  const [isServerDown, setIsServerDown] = React.useState(false); // Tracks server status
+  const [offlineQueue, setOfflineQueue] = React.useState([]); // Stores offline operations
+  const [editingPost, setEditingPost] = React.useState(null); // Track which post is being edited
+  const [serverRestartDetected, setServerRestartDetected] = React.useState(false);
+  const [uploadType, setUploadType] = React.useState('url'); // 'url' or 'file'
+  const [selectedFile, setSelectedFile] = React.useState(null);
+  const [fileUploadProgress, setFileUploadProgress] = React.useState(0);
+  const [isUploading, setIsUploading] = React.useState(false);
 
   // Add these new state variables
-  const [wsConnected, setWsConnected] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generationStats, setGenerationStats] = useState({ link: 0, photo: 0, video: 0 });
-  const wsService = useRef(null);
+  const [wsConnected, setWsConnected] = React.useState(false);
+  const [isGenerating, setIsGenerating] = React.useState(false);
+  const [generationStats, setGenerationStats] = React.useState({ link: 0, photo: 0, video: 0 });
+  const wsService = React.useRef(null);
 
   // Initialize WebSocket service
-  useEffect(() => {
+  React.useEffect(() => {
     // Create WebSocket service
     const serverUrl = SERVER_URL || 'http://localhost:5003';
     wsService.current = new WebSocketService(serverUrl);
@@ -357,7 +302,7 @@ function App() {
   };
 
   // Improved sync offline queue function
-  const syncOfflineQueue = useCallback(async () => {
+  const syncOfflineQueue = React.useCallback(async () => {
     if (offlineQueue.length === 0) return;
     
     console.log("Syncing offline queue:", offlineQueue.length, "operations");
@@ -640,7 +585,7 @@ function App() {
   };
 
   // Detect network status - FIXED VERSION
-  useEffect(() => {
+  React.useEffect(() => {
     // Add a flag to prevent multiple sync attempts
     let isSyncing = false;
 
@@ -672,7 +617,7 @@ function App() {
   }, [isServerDown, offlineQueue.length, syncOfflineQueue]);
 
   // Check server status periodically with improved error handling
-  useEffect(() => {
+  React.useEffect(() => {
     if (isNetworkDown) return;
     
     // Add a flag to prevent multiple sync attempts
@@ -733,7 +678,7 @@ function App() {
   }, [isNetworkDown, isServerDown, offlineQueue.length, syncOfflineQueue]);
 
   // Initial fetch
-  useEffect(() => {
+  React.useEffect(() => {
     const initialLoad = async () => {
       await fetchPosts();
       
@@ -746,7 +691,7 @@ function App() {
 
   // Add these to your useEffect hooks
   // Load offline queue from localStorage when the component mounts
-  useEffect(() => {
+  React.useEffect(() => {
     const savedQueue = localStorage.getItem('offlineQueue');
     if (savedQueue) {
       try {
@@ -758,7 +703,7 @@ function App() {
   }, []);
 
   // Save offline queue to localStorage whenever it changes
-  useEffect(() => {
+  React.useEffect(() => {
     localStorage.setItem('offlineQueue', JSON.stringify(offlineQueue));
   }, [offlineQueue]);
 
@@ -940,7 +885,7 @@ function App() {
           </Modal>
         </div>
       ) : (
-        <Auth setIsAuthenticated={setIsAuthenticated} />
+        <Auth />
       )}
     </>
   );
@@ -975,8 +920,5 @@ const isVideoFile = (filePath) => {
                          
   return hasVideoExtension || hasVideoParam;
 };
-
-// Add this function to synchronize localStorage data with the server
-
 
 export default App;

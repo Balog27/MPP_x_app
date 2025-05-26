@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const { User } = require('../models');
-const { JWT_SECRET } = require('../middleware/auth');
+const { JWT_SECRET, auth } = require('../middleware/auth');
 const monitoringService = require('../services/monitoringService');
 const { Op } = require('sequelize');
 
@@ -26,9 +26,16 @@ router.post('/register', async (req, res) => {
     const user = await User.create({
       username,
       email,
-      password
+      password,
+      role: 'user',  // Default role
+      lastLogin: new Date()
     });
 
+    // Generate token
+    const token = jwt.sign({ id: user.id }, JWT_SECRET, {
+      expiresIn: '7d' // Token expires in 7 days
+    });
+    
     // Log the registration
     await monitoringService.logActivity(
       user.id,
@@ -39,9 +46,6 @@ router.post('/register', async (req, res) => {
       req
     );
 
-    // Generate token
-    const token = jwt.sign({ id: user.id }, JWT_SECRET);
-    
     res.status(201).json({
       user: {
         id: user.id,
@@ -76,6 +80,11 @@ router.post('/login', async (req, res) => {
     // Update last login
     await user.update({ lastLogin: new Date() });
 
+    // Generate token
+    const token = jwt.sign({ id: user.id }, JWT_SECRET, {
+      expiresIn: '7d' // Token expires in 7 days
+    });
+    
     // Log the login
     await monitoringService.logActivity(
       user.id,
@@ -86,9 +95,6 @@ router.post('/login', async (req, res) => {
       req
     );
 
-    // Generate token
-    const token = jwt.sign({ id: user.id }, JWT_SECRET);
-    
     res.json({
       user: {
         id: user.id,
@@ -103,4 +109,38 @@ router.post('/login', async (req, res) => {
   }
 });
 
-module.exports = router; 
+// Get current user profile
+router.get('/me', auth, async (req, res) => {
+  try {
+    res.json({
+      id: req.user.id,
+      username: req.user.username,
+      email: req.user.email,
+      role: req.user.role,
+      lastLogin: req.user.lastLogin
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Logout - optional, since JWT is stateless
+router.post('/logout', auth, async (req, res) => {
+  try {
+    // Log the logout activity
+    await monitoringService.logActivity(
+      req.user.id,
+      'READ',
+      'User',
+      req.user.id,
+      'User logout',
+      req
+    );
+    
+    res.json({ message: 'Logged out successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+module.exports = router;
