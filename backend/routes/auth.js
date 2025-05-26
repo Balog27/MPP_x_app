@@ -80,7 +80,7 @@ router.post('/login', async (req, res) => {
     // Update last login
     await user.update({ lastLogin: new Date() });
 
-    // Check if 2FA is enabled
+    // Check if 2FA is enabled for this user
     if (user.twoFactorEnabled) {
       // Create a temporary token for 2FA validation
       const tempToken = jwt.sign({ id: user.id, temp: true }, JWT_SECRET, {
@@ -90,24 +90,14 @@ router.post('/login', async (req, res) => {
       // Store the temporary token
       await user.update({ tempToken });
 
-      // Log the login attempt awaiting 2FA
-      await monitoringService.logActivity(
-        user.id,
-        'READ',
-        'User',
-        user.id,
-        'User login awaiting 2FA',
-        req
-      );
-
       // Return temporary token and 2FA required flag
       return res.json({
+        requiresTwoFactor: true,
+        tempToken,
         user: {
           id: user.id,
-          username: user.username
-        },
-        requiresTwoFactor: true,
-        tempToken
+          username: user.username,
+        }
       });
     }
 
@@ -116,16 +106,6 @@ router.post('/login', async (req, res) => {
       expiresIn: '7d'
     });
     
-    // Log the login
-    await monitoringService.logActivity(
-      user.id,
-      'READ',
-      'User',
-      user.id,
-      'User login',
-      req
-    );
-
     res.json({
       user: {
         id: user.id,

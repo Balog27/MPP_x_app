@@ -4,6 +4,7 @@ import Auth from './components/Auth';
 import Modal from 'react-modal';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import TwoFactorManagement from './components/TwoFactorManagement';
+import TwoFactorVerify from './components/TwoFactorVerify';
 
 // Define SERVER_URL as a constant at the top level
 const SERVER_URL = process.env.REACT_APP_API_URL || 'https://mppxapp-production.up.railway.app'; 
@@ -20,7 +21,7 @@ function App() {
 
 // App content using authentication
 function AppContent() {
-  const { isAuthenticated, currentUser, logout } = useAuth();
+  const { isAuthenticated, currentUser, logout, requiresTwoFactor, tempToken, validateTwoFactor } = useAuth();
   
   // Add this state for 2FA management modal
   const [showTwoFactorModal, setShowTwoFactorModal] = React.useState(false);
@@ -751,6 +752,40 @@ function AppContent() {
   };
 
   const { totalPosts, shortDescriptions, mediumDescriptions, longDescriptions } = getStatistics();
+
+  // Function to handle 2FA verification success
+  const handle2FASuccess = (data) => {
+    // Verification is handled by the AuthContext
+    console.log("2FA verification successful!");
+  };
+
+  // Add this function to render the 2FA option in sidebar
+  const renderTwoFactorOption = () => {
+    if (!currentUser) return null;
+    
+    return (
+      <div className="security-section">
+        <button 
+          className="two-factor-button" 
+          onClick={() => setShowTwoFactorModal(true)}
+        >
+          {currentUser.twoFactorEnabled 
+            ? 'Manage Two-Factor Authentication'
+            : 'Enable Two-Factor Authentication'}
+        </button>
+      </div>
+    );
+  };
+
+  // If 2FA verification is required, show the verification screen
+  if (requiresTwoFactor && tempToken) {
+    return (
+      <TwoFactorVerify 
+        tempToken={tempToken}
+        onComplete={handle2FASuccess}
+      />
+    );
+  }
 
   return (
     <>

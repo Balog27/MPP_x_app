@@ -1,66 +1,95 @@
-.two-factor-setup-container {
+.two-factor-setup {
   max-width: 500px;
   margin: 0 auto;
   padding: 20px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
-.two-factor-setup-container h2,
-.two-factor-setup-container h3 {
+.two-factor-setup h2 {
   color: #333;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+  text-align: center;
 }
 
-.two-factor-loading {
-  text-align: center;
-  padding: 20px;
-  font-size: 16px;
-  color: #555;
+.setup-steps {
+  margin: 30px 0;
 }
 
-.setup-instructions {
-  text-align: center;
+.step {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.step-number {
+  background-color: #4a90e2;
+  color: white;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  margin-right: 15px;
 }
 
 .qr-container {
-  display: flex;
-  justify-content: center;
+  text-align: center;
   margin: 20px 0;
 }
 
 .qr-container img {
   max-width: 200px;
-  border: 1px solid #ddd;
   padding: 10px;
   background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
 }
 
 .secret-key {
   font-family: monospace;
-  font-size: 18px;
   background-color: #f5f5f5;
-  padding: 10px;
+  padding: 12px;
   border-radius: 4px;
-  margin: 20px 0;
+  text-align: center;
+  letter-spacing: 2px;
+  font-size: 16px;
+  margin: 15px 0 25px;
   word-break: break-all;
 }
 
-.setup-instructions form {
-  margin-top: 20px;
+.or-divider {
+  position: relative;
+  text-align: center;
+  margin: 20px 0;
 }
 
-.setup-instructions input {
-  display: block;
+.or-divider::before,
+.or-divider::after {
+  content: "";
+  display: inline-block;
+  width: 40%;
+  height: 1px;
+  background-color: #ddd;
+  vertical-align: middle;
+  margin: 0 10px;
+}
+
+.two-factor-setup input {
   width: 100%;
   padding: 12px;
   font-size: 18px;
   text-align: center;
-  letter-spacing: 4px;
-  margin-bottom: 16px;
+  letter-spacing: 6px;
+  margin: 15px 0;
   border: 2px solid #ddd;
   border-radius: 4px;
 }
 
-.setup-instructions button {
+.primary-button {
   width: 100%;
   padding: 12px;
   background-color: #4a90e2;
@@ -69,12 +98,32 @@
   border-radius: 4px;
   font-size: 16px;
   cursor: pointer;
-  transition: background-color 0.3s;
+  margin-top: 20px;
 }
 
-.setup-success {
-  text-align: center;
-  padding: 20px;
-  background-color: #e7f5ea;
+.primary-button:hover {
+  background-color: #357ab8;
+}
+
+.primary-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.error-message {
+  color: #e74c3c;
+  margin-bottom: 16px;
+  padding: 10px;
+  background-color: #fdecea;
   border-radius: 4px;
+}
+
+.setup-complete {
+  text-align: center;
+}
+
+.success-icon {
+  font-size: 60px;
+  color: #2ecc71;
+  margin: 20px 0;
 }
