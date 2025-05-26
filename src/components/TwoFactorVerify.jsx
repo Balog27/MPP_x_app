@@ -13,6 +13,8 @@ const TwoFactorVerify = ({ tempToken, onComplete, onCancel }) => {
     setError('');
 
     try {
+      console.log('Validating 2FA code with token:', tempToken);
+      
       const response = await fetch(`${API_URL}/api/2fa/validate`, {
         method: 'POST',
         headers: {
@@ -25,6 +27,7 @@ const TwoFactorVerify = ({ tempToken, onComplete, onCancel }) => {
       });
 
       const data = await response.json();
+      console.log('2FA validation response:', data);
 
       if (response.ok) {
         // Store the token and user info
@@ -34,6 +37,7 @@ const TwoFactorVerify = ({ tempToken, onComplete, onCancel }) => {
         setError(data.error || 'Invalid verification code');
       }
     } catch (err) {
+      console.error('2FA error:', err);
       setError('Network error. Please try again.');
     } finally {
       setLoading(false);
@@ -61,7 +65,7 @@ const TwoFactorVerify = ({ tempToken, onComplete, onCancel }) => {
           <button 
             type="submit" 
             className="verify-button"
-            disabled={loading}
+            disabled={loading || code.length !== 6}
           >
             {loading ? 'Verifying...' : 'Verify'}
           </button>

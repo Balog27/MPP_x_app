@@ -27,6 +27,8 @@ function Auth({ onAuthSuccess }) {
         ? { email, password }
         : { username, email, password };
 
+      console.log(`Making ${isLogin ? 'login' : 'register'} request to ${API_URL}${endpoint}`);
+      
       const response = await fetch(`${API_URL}${endpoint}`, {
         method: 'POST',
         headers: {
@@ -36,10 +38,12 @@ function Auth({ onAuthSuccess }) {
       });
 
       const data = await response.json();
+      console.log('Auth API response:', data);
 
       if (response.ok) {
         if (data.requiresTwoFactor) {
           // Handle 2FA flow
+          console.log('2FA required, setting up verification');
           setRequiresTwoFactor(true);
           setTempToken(data.tempToken);
         } else {
@@ -51,6 +55,7 @@ function Auth({ onAuthSuccess }) {
         setError(data.error || 'Authentication failed');
       }
     } catch (err) {
+      console.error('Auth error:', err);
       setError('Network error. Please try again.');
     } finally {
       setLoading(false);
@@ -70,6 +75,7 @@ function Auth({ onAuthSuccess }) {
     // Reset the form
     setRequiresTwoFactor(false);
     setTempToken(null);
+    setError('');
   };
 
   // Show 2FA verification if required

@@ -52,6 +52,7 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       setError(null);
+      console.log(`Attempting login with email: ${email} to ${API_URL}`);
       const response = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
@@ -61,10 +62,12 @@ export const AuthProvider = ({ children }) => {
       });
       
       const data = await response.json();
+      console.log('Login response:', data);
       
       if (response.ok) {
         if (data.requiresTwoFactor) {
           // If 2FA is required, store the temporary token and set the flag
+          console.log('2FA required, setting up verification with temp token:', data.tempToken);
           setRequiresTwoFactor(true);
           setTempToken(data.tempToken);
           setCurrentUser({
@@ -74,6 +77,7 @@ export const AuthProvider = ({ children }) => {
           return { requiresTwoFactor: true };
         } else if (data.token) {
           // Regular login success
+          console.log('Regular login successful, setting token');
           localStorage.setItem('token', data.token);
           setCurrentUser(data.user);
           return { success: true };
@@ -83,6 +87,7 @@ export const AuthProvider = ({ children }) => {
         return { error: data.error || 'Login failed' };
       }
     } catch (error) {
+      console.error('Login error:', error);
       setError('Network error. Please try again later.');
       return { error: 'Network error. Please try again later.' };
     }
@@ -91,6 +96,7 @@ export const AuthProvider = ({ children }) => {
   const validateTwoFactor = async (token) => {
     try {
       setError(null);
+      console.log(`Validating 2FA code with tempToken: ${tempToken?.substring(0, 10)}...`);
       const response = await fetch(`${API_URL}/api/2fa/validate`, {
         method: 'POST',
         headers: {
@@ -103,6 +109,7 @@ export const AuthProvider = ({ children }) => {
       });
       
       const data = await response.json();
+      console.log('2FA validation response:', data);
       
       if (response.ok && data.token) {
         localStorage.setItem('token', data.token);
@@ -115,6 +122,7 @@ export const AuthProvider = ({ children }) => {
         return { error: data.error || 'Invalid 2FA token' };
       }
     } catch (error) {
+      console.error('2FA validation error:', error);
       setError('Network error. Please try again later.');
       return { error: 'Network error. Please try again later.' };
     }

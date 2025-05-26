@@ -64,23 +64,27 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
+    console.log(`Login attempt for email: ${email}`);
     
     // Find user
     const user = await User.findOne({ where: { email } });
     if (!user) {
+      console.log('User not found');
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     // Validate password
     const isValidPassword = await user.validatePassword(password);
     if (!isValidPassword) {
+      console.log('Invalid password');
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     // Update last login
     await user.update({ lastLogin: new Date() });
 
-    // Check if 2FA is enabled for this user
+    // Check if 2FA is enabled
+    console.log('2FA enabled for user:', user.twoFactorEnabled);
     if (user.twoFactorEnabled) {
       // Create a temporary token for 2FA validation
       const tempToken = jwt.sign({ id: user.id, temp: true }, JWT_SECRET, {
@@ -89,6 +93,18 @@ router.post('/login', async (req, res) => {
       
       // Store the temporary token
       await user.update({ tempToken });
+
+      console.log('Requiring 2FA with tempToken:', tempToken);
+      
+      // Log the login attempt awaiting 2FA
+      await monitoringService.logActivity(
+        user.id,
+        'READ',
+        'User',
+        user.id,
+        'User login awaiting 2FA',
+        req
+      );
 
       // Return temporary token and 2FA required flag
       return res.json({
@@ -106,6 +122,16 @@ router.post('/login', async (req, res) => {
       expiresIn: '7d'
     });
     
+    // Log the login
+    await monitoringService.logActivity(
+      user.id,
+      'READ',
+      'User',
+      user.id,
+      'User login',
+      req
+    );
+
     res.json({
       user: {
         id: user.id,
@@ -116,6 +142,7 @@ router.post('/login', async (req, res) => {
       token
     });
   } catch (error) {
+    console.error('Login error:', error);
     res.status(400).json({ error: error.message });
   }
 });

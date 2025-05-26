@@ -10,6 +10,7 @@ const monitoringService = require('../services/monitoringService');
 // Generate a new 2FA secret for a user
 router.post('/setup', auth, async (req, res) => {
   try {
+    console.log('Setting up 2FA for user:', req.user.id);
     const user = req.user;
     
     // Generate new secret
@@ -37,6 +38,7 @@ router.post('/setup', auth, async (req, res) => {
       qrCode: qrCode
     });
   } catch (error) {
+    console.error('Error in 2FA setup:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -44,6 +46,7 @@ router.post('/setup', auth, async (req, res) => {
 // Verify a token and enable 2FA for the user
 router.post('/verify-setup', auth, async (req, res) => {
   try {
+    console.log('Verifying 2FA setup for user:', req.user.id);
     const { token } = req.body;
     const user = req.user;
     
@@ -73,6 +76,7 @@ router.post('/verify-setup', auth, async (req, res) => {
     
     res.json({ success: true, message: '2FA enabled successfully' });
   } catch (error) {
+    console.error('Error in 2FA verification:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -80,6 +84,7 @@ router.post('/verify-setup', auth, async (req, res) => {
 // Disable 2FA for the user
 router.post('/disable', auth, async (req, res) => {
   try {
+    console.log('Disabling 2FA for user:', req.user.id);
     const { token } = req.body;
     const user = req.user;
     
@@ -112,6 +117,7 @@ router.post('/disable', auth, async (req, res) => {
     
     res.json({ success: true, message: '2FA disabled successfully' });
   } catch (error) {
+    console.error('Error disabling 2FA:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -119,6 +125,7 @@ router.post('/disable', auth, async (req, res) => {
 // Validate a 2FA token during login
 router.post('/validate', async (req, res) => {
   try {
+    console.log('Validating 2FA token during login');
     const { tempToken, token } = req.body;
     
     if (!tempToken || !token) {
@@ -129,7 +136,9 @@ router.post('/validate', async (req, res) => {
     let decoded;
     try {
       decoded = jwt.verify(tempToken, JWT_SECRET);
+      console.log('Temp token verified for user ID:', decoded.id);
     } catch (error) {
+      console.error('Invalid temporary token:', error);
       return res.status(401).json({ error: 'Invalid temporary token' });
     }
     
@@ -139,11 +148,16 @@ router.post('/validate', async (req, res) => {
       return res.status(401).json({ error: 'User not found' });
     }
     
+    console.log('Found user:', user.id, 'with 2FA enabled:', user.twoFactorEnabled);
+    
     // Verify the 2FA token
     const isValid = twoFactorService.verifyToken(token, user.twoFactorSecret);
     if (!isValid) {
+      console.log('Invalid 2FA token provided');
       return res.status(401).json({ error: 'Invalid 2FA token' });
     }
+    
+    console.log('2FA token is valid, generating full access token');
     
     // Clear the temporary token
     await user.update({ tempToken: null });
@@ -173,6 +187,7 @@ router.post('/validate', async (req, res) => {
       token: fullToken
     });
   } catch (error) {
+    console.error('Error in 2FA validation:', error);
     res.status(500).json({ error: error.message });
   }
 });

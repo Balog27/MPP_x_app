@@ -30,6 +30,7 @@ class TwoFactorService {
     try {
       return await qrcode.toDataURL(otpauthUrl);
     } catch (error) {
+      console.error('Error generating QR code:', error);
       throw new Error('Error generating QR code');
     }
   }
@@ -41,12 +42,29 @@ class TwoFactorService {
    * @returns {boolean} - Whether the token is valid
    */
   verifyToken(token, secret) {
-    return speakeasy.totp.verify({
-      secret: secret,
-      encoding: 'base32',
-      token: token,
-      window: 1 // Allow 1 step before and after current time (for clock drift)
-    });
+    // Make sure inputs are valid
+    if (!token || !secret) {
+      console.log('Missing token or secret for verification');
+      return false;
+    }
+
+    try {
+      // Allow a bit more flexibility with the token formatting
+      const cleanToken = token.replace(/\s+/g, '');
+      
+      const result = speakeasy.totp.verify({
+        secret: secret,
+        encoding: 'base32',
+        token: cleanToken,
+        window: 1 // Allow 1 step before and after current time (for clock drift)
+      });
+      
+      console.log('Token verification result:', result);
+      return result;
+    } catch (error) {
+      console.error('Error verifying token:', error);
+      return false;
+    }
   }
 }
 
