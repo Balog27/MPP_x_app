@@ -557,17 +557,49 @@ app.post('/sync', express.json({ limit: '50mb' }), (req, res) => {
   res.json({ results, errors });
 });
 
-// Add this to your server.js if it's not already there
-sequelize.sync({ alter: true })
-  .then(() => console.log('Database synchronized'))
-  .catch(err => console.error('Failed to sync database:', err));
+// Remove duplicate sync, we'll use one in the initializeApp function
 
 // Initialize database and start monitoring
 async function initializeApp() {
   try {
-    // Sync database models
-    await sequelize.sync({ alter: true });
-    console.log('Database synchronized successfully');
+    try {
+      // Try to create database if it doesn't exist
+      const { Sequelize } = require('sequelize');
+      const rootSequelize = new Sequelize('mysql', 
+        process.env.DB_USER || 'root', 
+        process.env.DB_PASSWORD || '', 
+        {
+          host: process.env.DB_HOST || 'localhost',
+          port: process.env.DB_PORT || 3306,
+          dialect: 'mysql',
+          logging: false
+        }
+      );
+
+      try {
+        // Attempt to create the database if it doesn't exist
+        await rootSequelize.query(`CREATE DATABASE IF NOT EXISTS ${process.env.DB_NAME || 'blog_app'}`);
+        console.log('Database created or already exists');
+        await rootSequelize.close();
+      } catch (dbCreateError) {
+        console.error('Could not create database:', dbCreateError.message);
+      }
+
+      // First try with sync without modifying structure
+      await sequelize.sync({ force: false });
+      console.log('Database synchronized successfully');
+    } catch (syncError) {
+      console.error('Regular sync failed, trying alternative approach:', syncError.message);
+      
+      // Check if the error is related to too many keys
+      if (syncError.message.includes('Too many keys specified')) {
+        // Try to connect to the database without syncing the models
+        await sequelize.authenticate();
+        console.log('Database connection established without model synchronization');
+      } else {
+        throw syncError; // Re-throw if it's not the expected error
+      }
+    }
 
     // Start monitoring service
     monitoringService.startMonitoring();

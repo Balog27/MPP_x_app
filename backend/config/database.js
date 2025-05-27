@@ -4,22 +4,18 @@ const { Sequelize } = require('sequelize');
 const connectionString = process.env.DATABASE_URL;
 let sequelize;
 
-if (connectionString) {
-  // Use the connection string provided by Railway
+if (connectionString) {  // Use the connection string provided by Railway
   sequelize = new Sequelize(connectionString, {
     dialect: 'mysql',
     logging: false,
     dialectOptions: {
-      ssl: {
-        rejectUnauthorized: false
-      },
+      // Remove SSL requirement since local server might not support it
       connectTimeout: 60000
     }
   });
-} else {
-  // Use the public MySQL connection instead of internal networking
+} else {  // Use the public MySQL connection instead of internal networking
   sequelize = new Sequelize(
-    process.env.DB_NAME || 'railway', 
+    process.env.DB_NAME || 'blog_app', 
     process.env.DB_USER || 'root', 
     process.env.DB_PASSWORD || '', 
     {
@@ -28,9 +24,7 @@ if (connectionString) {
       dialect: 'mysql',
       logging: false,
       dialectOptions: {
-        ssl: {
-          rejectUnauthorized: false
-        },
+        // Remove SSL requirement for local development
         connectTimeout: 60000
       }
     }

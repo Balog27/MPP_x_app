@@ -27,30 +27,35 @@ module.exports = (sequelize) => {
     },
     role: {
       type: DataTypes.ENUM('user', 'admin'),
-      defaultValue: 'user'
+      defaultValue: 'user',
+      // Remove index for role
     },
     isMonitored: {
       type: DataTypes.BOOLEAN,
-      defaultValue: false
+      defaultValue: false,
+      // Remove index for isMonitored
     },
     lastLogin: {
-      type: DataTypes.DATE
+      type: DataTypes.DATE,
+      // Remove index for lastLogin
     },
     // Add 2FA fields
     twoFactorSecret: {
       type: DataTypes.STRING,
-      allowNull: true
+      allowNull: true,
+      // Remove index for twoFactorSecret
     },
     twoFactorEnabled: {
       type: DataTypes.BOOLEAN,
-      defaultValue: false
+      defaultValue: false,
+      // Remove index for twoFactorEnabled
     },
     // Optional temporary token to hold logged in state while waiting for 2FA
     tempToken: {
       type: DataTypes.STRING,
-      allowNull: true
-    }
-  }, {
+      allowNull: true,
+      // Remove index for tempToken
+    }  }, {
     hooks: {
       beforeCreate: async (user) => {
         if (user.password) {
@@ -62,7 +67,18 @@ module.exports = (sequelize) => {
           user.password = await bcrypt.hash(user.password, 10);
         }
       }
-    }
+    },
+    // Explicitly define only necessary indexes
+    indexes: [
+      {
+        unique: true,
+        fields: ['username']
+      },
+      {
+        unique: true,
+        fields: ['email']
+      }
+    ]
   });
 
   User.prototype.validatePassword = async function(password) {

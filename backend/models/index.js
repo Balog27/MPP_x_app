@@ -5,9 +5,9 @@ const sequelize = require('../config/database');
 const User = require('./User')(sequelize);
 const ActivityLog = require('./ActivityLog')(sequelize);
 
-// If you have associations, define them here
-// User.hasMany(ActivityLog, { foreignKey: 'userId' });
-// ActivityLog.belongsTo(User, { foreignKey: 'userId' });
+// Define associations
+User.hasMany(ActivityLog, { foreignKey: 'userId' });
+ActivityLog.belongsTo(User, { foreignKey: 'userId' });
 
 module.exports = {
   sequelize,
