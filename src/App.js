@@ -5,6 +5,7 @@ import Modal from 'react-modal';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import TwoFactorManagement from './components/TwoFactorManagement';
 import TwoFactorVerify from './components/TwoFactorVerify';
+import WebSocketService from './webSocketService';
 
 // Define SERVER_URL as a constant at the top level
 const SERVER_URL = process.env.REACT_APP_API_URL || 'https://mppxapp-production.up.railway.app'; 
