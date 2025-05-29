@@ -43,6 +43,39 @@ router.post('/setup', auth, async (req, res) => {
   }
 });
 
+// Generate a static code for testing 2FA (simpler alternative)
+router.post('/setup-static', auth, async (req, res) => {
+  try {
+    console.log('Setting up static 2FA for user:', req.user.id);
+    const user = req.user;
+    
+    // Generate static code
+    const staticCode = twoFactorService.generateStaticCode();
+    
+    // Store the secret in the user record (but don't enable 2FA yet)
+    await user.update({ twoFactorSecret: staticCode.secret });
+    
+    // Log the activity
+    await monitoringService.logActivity(
+      user.id,
+      'UPDATE',
+      'User',
+      user.id,
+      'Static 2FA setup initiated',
+      req
+    );
+
+    // Return the code to the client
+    res.json({
+      code: staticCode.code,
+      message: "Use this code for all 2FA verifications. This is a test-only mode."
+    });
+  } catch (error) {
+    console.error('Error in static 2FA setup:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Verify a token and enable 2FA for the user
 router.post('/verify-setup', auth, async (req, res) => {
   try {
@@ -77,6 +110,48 @@ router.post('/verify-setup', auth, async (req, res) => {
     res.json({ success: true, message: '2FA enabled successfully' });
   } catch (error) {
     console.error('Error in 2FA verification:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Verify static code setup
+router.post('/verify-setup-static', auth, async (req, res) => {
+  try {
+    console.log('Verifying static 2FA setup for user:', req.user.id);
+    const { token } = req.body;
+    const user = req.user;
+    
+    if (!user.twoFactorSecret || !user.twoFactorSecret.startsWith('STATIC:')) {
+      return res.status(400).json({ error: 'Static 2FA not set up yet' });
+    }
+    
+    // Verify the token
+    const isValid = twoFactorService.verifyStaticCode(token, user.twoFactorSecret);
+    
+    if (!isValid) {
+      return res.status(400).json({ error: 'Invalid token' });
+    }
+    
+    // Enable 2FA
+    await user.update({ twoFactorEnabled: true });
+    
+    // Log the activity
+    await monitoringService.logActivity(
+      user.id,
+      'UPDATE',
+      'User',
+      user.id,
+      'Static 2FA enabled',
+      req
+    );
+    
+    res.json({ 
+      success: true, 
+      message: '2FA enabled successfully using static code',
+      staticCode: token
+    });
+  } catch (error) {
+    console.error('Error in static 2FA verification:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -167,13 +242,16 @@ router.post('/validate', async (req, res) => {
       expiresIn: '7d'
     });
     
+    // Check if this was a static code authentication
+    const isStaticCode = user.twoFactorSecret && user.twoFactorSecret.startsWith('STATIC:');
+    
     // Log the successful 2FA login
     await monitoringService.logActivity(
       user.id,
       'READ',
       'User',
       user.id,
-      'User completed 2FA login',
+      `User completed 2FA login ${isStaticCode ? '(static code)' : '(TOTP)'}`,
       { ip: req.ip, headers: req.headers }
     );
     
@@ -184,7 +262,8 @@ router.post('/validate', async (req, res) => {
         email: user.email,
         role: user.role
       },
-      token: fullToken
+      token: fullToken,
+      isStaticCode: isStaticCode
     });
   } catch (error) {
     console.error('Error in 2FA validation:', error);

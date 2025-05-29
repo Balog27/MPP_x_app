@@ -1,6 +1,7 @@
 const speakeasy = require('speakeasy');
 const qrcode = require('qrcode');
 const { User } = require('../models');
+const crypto = require('crypto');
 
 class TwoFactorService {
   /**
@@ -40,14 +41,16 @@ class TwoFactorService {
    * @param {string} token - The TOTP token to verify
    * @param {string} secret - The user's secret
    * @returns {boolean} - Whether the token is valid
-   */  verifyToken(token, secret) {
+   */
+  verifyToken(token, secret) {
     // Make sure inputs are valid
     if (!token || !secret) {
       console.log('Missing token or secret for verification');
       return false;
     }
 
-    try {      // Allow a bit more flexibility with the token formatting
+    try {
+      // Allow a bit more flexibility with the token formatting
       const cleanToken = token.replace(/\s+/g, '');
       console.log(`Verifying token: ${cleanToken} with secret: ${secret ? 'SECRET_PROVIDED' : 'NO_SECRET'}`);
       
@@ -60,7 +63,13 @@ class TwoFactorService {
         console.log('Invalid token format, must be 6 digits');
         return false;
       }
-        const result = speakeasy.totp.verify({
+
+      // Check if this is a static code (prefixed with "STATIC:")
+      if (secret.startsWith('STATIC:')) {
+        return this.verifyStaticCode(cleanToken, secret);
+      }
+        
+      const result = speakeasy.totp.verify({
         secret: secret,
         encoding: 'base32',
         token: cleanToken,
@@ -73,6 +82,41 @@ class TwoFactorService {
       console.error('Error verifying token:', error);
       return false;
     }
+  }
+
+  /**
+   * Generate a static verification code for testing
+   * @returns {Object} - Static code information
+   */
+  generateStaticCode() {
+    // Generate a simple 6-digit code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Store the code with a prefix to distinguish it from TOTP secrets
+    const secret = `STATIC:${code}`;
+    
+    return {
+      code,
+      secret
+    };
+  }
+
+  /**
+   * Verify a static verification code
+   * @param {string} token - The token to verify
+   * @param {string} secret - The static secret in format "STATIC:123456"
+   * @returns {boolean} - Whether the token is valid
+   */
+  verifyStaticCode(token, secret) {
+    if (!secret || !secret.startsWith('STATIC:')) {
+      console.log('Not a static code secret');
+      return false;
+    }
+    
+    const storedCode = secret.substring(7); // Remove "STATIC:" prefix
+    console.log(`Verifying static code. Input: ${token}, Expected: ${storedCode}`);
+    
+    return token === storedCode;
   }
 }
 

@@ -93,8 +93,12 @@ router.post('/login', async (req, res) => {
       
       // Store the temporary token
       await user.update({ tempToken });
+      
+      // Check if using static code
+      const isStaticCode = user.twoFactorSecret && user.twoFactorSecret.startsWith('STATIC:');
+      const twoFactorType = isStaticCode ? 'static' : 'totp';
 
-      console.log('Requiring 2FA with tempToken:', tempToken);
+      console.log(`Requiring 2FA (${twoFactorType}) with tempToken:`, tempToken);
       
       // Log the login attempt awaiting 2FA
       await monitoringService.logActivity(
@@ -102,7 +106,7 @@ router.post('/login', async (req, res) => {
         'READ',
         'User',
         user.id,
-        'User login awaiting 2FA',
+        `User login awaiting 2FA (${twoFactorType})`,
         req
       );
 
@@ -110,6 +114,7 @@ router.post('/login', async (req, res) => {
       return res.json({
         requiresTwoFactor: true,
         tempToken,
+        twoFactorType,
         user: {
           id: user.id,
           username: user.username,
