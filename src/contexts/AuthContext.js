@@ -88,12 +88,20 @@ export const AuthProvider = ({ children }) => {
           setTempToken(data.tempToken);
           sessionStorage.setItem('tempToken', data.tempToken);
           
+          // Store the 2FA type if provided
+          if (data.twoFactorType) {
+            sessionStorage.setItem('twoFactorType', data.twoFactorType);
+            if (data.twoFactorType === 'static') {
+              localStorage.setItem('usedStaticCode', 'true');
+            }
+          }
+          
           setCurrentUser({
             id: data.user.id,
             username: data.user.username
           });
           
-          return { requiresTwoFactor: true };
+          return { requiresTwoFactor: true, twoFactorType: data.twoFactorType };
         } else if (data.token) {
           // Regular login success
           console.log('Regular login successful, setting token');
@@ -145,7 +153,13 @@ export const AuthProvider = ({ children }) => {
         setCurrentUser(data.user);
         setRequiresTwoFactor(false);
         setTempToken(null);
-        return { success: true };
+        
+        // If this is a static code authentication, mark it for future reference
+        if (data.isStaticCode) {
+          localStorage.setItem('usedStaticCode', 'true');
+        }
+        
+        return { success: true, isStaticCode: data.isStaticCode };
       } else {
         // More detailed error message
         const errorMsg = data.error || 'Invalid 2FA token';

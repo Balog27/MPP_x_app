@@ -3,7 +3,7 @@ import './App.css';
 import Auth from './components/Auth';
 import Modal from 'react-modal';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import TwoFactorManagement from './components/TwoFactorManagement';
+import TwoFactorManagement from './components/TwoFactorManagement.jsx';
 import TwoFactorVerify from './components/TwoFactorVerify';
 import WebSocketService from './webSocketService';
 

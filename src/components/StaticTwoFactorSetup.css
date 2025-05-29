@@ -1,0 +1,74 @@
+/* Static Two-Factor Setup specific styles */
+.static-code-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 20px 0;
+}
+
+.static-code {
+  font-size: 28px;
+  font-weight: bold;
+  letter-spacing: 3px;
+  padding: 10px 20px;
+  background-color: #f0f0f0;
+  border: 2px solid #ddd;
+  border-radius: 4px;
+  margin-right: 8px;
+}
+
+.copy-button {
+  padding: 8px 16px;
+  background-color: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.copy-button:hover {
+  background-color: #357abd;
+}
+
+.code-instructions {
+  background-color: #fff8e1;
+  border-left: 4px solid #ffb74d;
+  padding: 10px 16px;
+  margin: 16px 0;
+  border-radius: 0 4px 4px 0;
+}
+
+.code-instructions p {
+  margin: 5px 0;
+}
+
+.setup-subtitle {
+  color: #757575;
+  font-style: italic;
+  margin-bottom: 16px;
+}
+
+.verify-form {
+  margin-top: 24px;
+}
+
+.setup-button {
+  width: 100%;
+  padding: 12px;
+  background-color: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  margin-top: 16px;
+}
+
+.setup-button:hover {
+  background-color: #357abd;
+}
+
+.setup-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}

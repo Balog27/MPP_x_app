@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './TwoFactorVerify.css';
 
 const TwoFactorVerify = ({ tempToken, onComplete, onCancel }) => {
@@ -6,10 +6,38 @@ const TwoFactorVerify = ({ tempToken, onComplete, onCancel }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [loginRetries, setLoginRetries] = useState(0);
+  const [isStaticCode, setIsStaticCode] = useState(false);
+  const [userId, setUserId] = useState(null);
   const API_URL = process.env.REACT_APP_API_URL || 'https://mppxapp-production.up.railway.app';
   
   // If tempToken isn't provided via props, try to get it from sessionStorage
-  const actualToken = tempToken || sessionStorage.getItem('tempToken');  const handleSubmit = async (e) => {
+  const actualToken = tempToken || sessionStorage.getItem('tempToken');
+  
+  // Check if user has static code setup
+  useEffect(() => {
+    const checkCodeType = async () => {
+      if (!actualToken) return;
+      
+      try {
+        // Decode the JWT token to get the user ID
+        const payload = JSON.parse(atob(actualToken.split('.')[1]));
+        setUserId(payload.id);
+        
+        // For simplicity, we'll assume it's a static code if 
+        // the token contains a special flag or user has used static code before
+        const hasUsedStaticCode = localStorage.getItem('usedStaticCode');
+        if (hasUsedStaticCode === 'true') {
+          setIsStaticCode(true);
+        }
+      } catch (err) {
+        console.error('Error checking code type:', err);
+      }
+    };
+    
+    checkCodeType();
+  }, [actualToken]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     // Check if we have a token
@@ -42,7 +70,15 @@ const TwoFactorVerify = ({ tempToken, onComplete, onCancel }) => {
       });
 
       const data = await response.json();
-      console.log('2FA validation response:', data);      if (response.ok) {
+      console.log('2FA validation response:', data);
+      
+      if (response.ok) {
+        // If this is a static code (from the response or we detected it),
+        // mark it in localStorage for future reference
+        if (data.isStaticCode || isStaticCode) {
+          localStorage.setItem('usedStaticCode', 'true');
+        }
+        
         // Store the token and user info
         localStorage.setItem('token', data.token);
         // Clear the temporary token
@@ -55,8 +91,10 @@ const TwoFactorVerify = ({ tempToken, onComplete, onCancel }) => {
         // Better error handling with helpful tips
         let errorMessage = data.error || 'Invalid verification code';
         
-        // Add more specific guidance based on the number of retries
-        if (loginRetries >= 2) {
+        // Add more specific guidance based on the code type and number of retries
+        if (isStaticCode) {
+          errorMessage += '. Make sure you are entering the same static code you set up initially.';
+        } else if (loginRetries >= 2) {
           errorMessage += '. Make sure your device clock is synchronized. Try refreshing the page if the problem persists.';
         } else {
           errorMessage += '. Please make sure you are entering the current code from your authenticator app.';
@@ -71,18 +109,30 @@ const TwoFactorVerify = ({ tempToken, onComplete, onCancel }) => {
       setLoading(false);
     }
   };
+  
   return (
     <div className="two-factor-verify">
       <h2>Two-Factor Authentication Required</h2>
-      <p>Please enter the current verification code from your authenticator app:</p>
+      <p>Please enter the {isStaticCode ? 'static' : 'current'} verification code{isStaticCode ? ' you set up initially' : ' from your authenticator app'}:</p>
       
       {error && <div className="error-message">{error}</div>}
-        <div className="verification-tips">
+      
+      <div className="verification-tips">
         <p><strong>Tips:</strong></p>
         <ul>
-          <li>Enter the most current code from your authenticator app (Google Authenticator, Authy, etc.)</li>
-          <li>Codes change every 30 seconds - wait for a fresh code if needed</li>
-          <li>Make sure your device's time is correctly synchronized with internet time</li>
+          {isStaticCode ? (
+            <>
+              <li>Enter the static code you received during setup</li>
+              <li>This is the same 6-digit code every time you log in</li>
+              <li>If you've forgotten your code, you'll need to contact support</li>
+            </>
+          ) : (
+            <>
+              <li>Enter the most current code from your authenticator app (Google Authenticator, Authy, etc.)</li>
+              <li>Codes change every 30 seconds - wait for a fresh code if needed</li>
+              <li>Make sure your device's time is correctly synchronized with internet time</li>
+            </>
+          )}
           <li>Try refreshing the page if you've been waiting on this screen for a while</li>
         </ul>
       </div>
