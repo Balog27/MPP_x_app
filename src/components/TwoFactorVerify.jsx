@@ -5,15 +5,30 @@ const TwoFactorVerify = ({ tempToken, onComplete, onCancel }) => {
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loginRetries, setLoginRetries] = useState(0);
   const API_URL = process.env.REACT_APP_API_URL || 'https://mppxapp-production.up.railway.app';
-
-  const handleSubmit = async (e) => {
+  
+  // If tempToken isn't provided via props, try to get it from sessionStorage
+  const actualToken = tempToken || sessionStorage.getItem('tempToken');  const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Check if we have a token
+    if (!actualToken) {
+      setError('Your session has expired. Please log in again.');
+      return;
+    }
+    
+    // Extra validation
+    if (code.length !== 6) {
+      setError('Please enter the complete 6-digit code');
+      return;
+    }
+    
     setLoading(true);
     setError('');
 
     try {
-      console.log('Validating 2FA code with token:', tempToken);
+      console.log('Validating 2FA code with token');
       
       const response = await fetch(`${API_URL}/api/2fa/validate`, {
         method: 'POST',
@@ -21,35 +36,56 @@ const TwoFactorVerify = ({ tempToken, onComplete, onCancel }) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          tempToken,
-          token: code
+          tempToken: actualToken,
+          token: code.trim() // Ensure no whitespace
         }),
       });
 
       const data = await response.json();
-      console.log('2FA validation response:', data);
-
-      if (response.ok) {
+      console.log('2FA validation response:', data);      if (response.ok) {
         // Store the token and user info
         localStorage.setItem('token', data.token);
+        // Clear the temporary token
+        sessionStorage.removeItem('tempToken');
         onComplete(data); // Pass the user data and token back to the parent
       } else {
-        setError(data.error || 'Invalid verification code');
+        // Track failed attempts
+        setLoginRetries(prev => prev + 1);
+        
+        // Better error handling with helpful tips
+        let errorMessage = data.error || 'Invalid verification code';
+        
+        // Add more specific guidance based on the number of retries
+        if (loginRetries >= 2) {
+          errorMessage += '. Make sure your device clock is synchronized. Try refreshing the page if the problem persists.';
+        } else {
+          errorMessage += '. Please make sure you are entering the current code from your authenticator app.';
+        }
+        
+        setError(errorMessage);
       }
     } catch (err) {
       console.error('2FA error:', err);
-      setError('Network error. Please try again.');
+      setError('Network error. Please try again or refresh the page.');
     } finally {
       setLoading(false);
     }
   };
-
   return (
     <div className="two-factor-verify">
       <h2>Two-Factor Authentication Required</h2>
-      <p>Please enter the verification code from your authenticator app:</p>
+      <p>Please enter the current verification code from your authenticator app:</p>
       
       {error && <div className="error-message">{error}</div>}
+        <div className="verification-tips">
+        <p><strong>Tips:</strong></p>
+        <ul>
+          <li>Enter the most current code from your authenticator app (Google Authenticator, Authy, etc.)</li>
+          <li>Codes change every 30 seconds - wait for a fresh code if needed</li>
+          <li>Make sure your device's time is correctly synchronized with internet time</li>
+          <li>Try refreshing the page if you've been waiting on this screen for a while</li>
+        </ul>
+      </div>
       
       <form onSubmit={handleSubmit}>
         <input

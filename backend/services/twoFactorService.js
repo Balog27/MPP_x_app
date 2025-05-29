@@ -40,23 +40,31 @@ class TwoFactorService {
    * @param {string} token - The TOTP token to verify
    * @param {string} secret - The user's secret
    * @returns {boolean} - Whether the token is valid
-   */
-  verifyToken(token, secret) {
+   */  verifyToken(token, secret) {
     // Make sure inputs are valid
     if (!token || !secret) {
       console.log('Missing token or secret for verification');
       return false;
     }
 
-    try {
-      // Allow a bit more flexibility with the token formatting
+    try {      // Allow a bit more flexibility with the token formatting
       const cleanToken = token.replace(/\s+/g, '');
+      console.log(`Verifying token: ${cleanToken} with secret: ${secret ? 'SECRET_PROVIDED' : 'NO_SECRET'}`);
       
-      const result = speakeasy.totp.verify({
+      // For debugging current time-step
+      const timeStep = Math.floor(Date.now() / 30000);
+      console.log(`Current time step: ${timeStep}`);
+      
+      // Check if token is a valid 6-digit number
+      if (!/^\d{6}$/.test(cleanToken)) {
+        console.log('Invalid token format, must be 6 digits');
+        return false;
+      }
+        const result = speakeasy.totp.verify({
         secret: secret,
         encoding: 'base32',
         token: cleanToken,
-        window: 1 // Allow 1 step before and after current time (for clock drift)
+        window: 2 // Allow 2 steps before and after current time (for more clock drift tolerance)
       });
       
       console.log('Token verification result:', result);

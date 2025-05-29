@@ -51,6 +51,30 @@
   cursor: not-allowed;
 }
 
+.verification-tips {
+  background-color: #f8f9fa;
+  border-left: 4px solid #4a90e2;
+  padding: 10px 15px;
+  margin: 15px 0;
+  border-radius: 4px;
+  font-size: 0.9em;
+  text-align: left;
+}
+
+.verification-tips p {
+  margin: 0 0 5px 0;
+}
+
+.verification-tips ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.verification-tips li {
+  margin-bottom: 5px;
+  color: #555;
+}
+
 .two-factor-verify {
   max-width: 400px;
   margin: 0 auto;

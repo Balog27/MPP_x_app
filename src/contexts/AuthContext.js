@@ -11,18 +11,25 @@ export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [requiresTwoFactor, setRequiresTwoFactor] = useState(false);
-  const [tempToken, setTempToken] = useState(null);
+  
+  // Try to recover tempToken from sessionStorage if it exists
+  const savedTempToken = sessionStorage.getItem('tempToken');
+  const [requiresTwoFactor, setRequiresTwoFactor] = useState(!!savedTempToken);
+  const [tempToken, setTempToken] = useState(savedTempToken);
 
   useEffect(() => {
     // Check if the user is logged in
     const token = localStorage.getItem('token');
     if (token) {
       fetchUserData(token);
+    } else if (tempToken) {
+      // If we have a tempToken but no regular token, we're in 2FA verification
+      console.log('Found temporary token for 2FA verification');
+      setLoading(false);
     } else {
       setLoading(false);
     }
-  }, []);
+  }, [tempToken]);
 
   const fetchUserData = async (token) => {
     try {
@@ -63,17 +70,29 @@ export const AuthProvider = ({ children }) => {
       
       const data = await response.json();
       console.log('Login response:', data);
-      
-      if (response.ok) {
+        if (response.ok) {
         if (data.requiresTwoFactor) {
           // If 2FA is required, store the temporary token and set the flag
-          console.log('2FA required, setting up verification with temp token:', data.tempToken);
+          console.log('2FA required, setting up verification with temp token');
+          
+          // Make sure we have a valid temporary token
+          if (!data.tempToken) {
+            console.error('No temporary token received for 2FA');
+            setError('Authentication error. Please try again.');
+            return { error: 'Authentication error. Please try again.' };
+          }
+          
+          // Store the token in both state and sessionStorage for resilience
+          // (sessionStorage is used as a backup if the state is lost due to a re-render)
           setRequiresTwoFactor(true);
           setTempToken(data.tempToken);
+          sessionStorage.setItem('tempToken', data.tempToken);
+          
           setCurrentUser({
             id: data.user.id,
             username: data.user.username
           });
+          
           return { requiresTwoFactor: true };
         } else if (data.token) {
           // Regular login success
@@ -92,11 +111,21 @@ export const AuthProvider = ({ children }) => {
       return { error: 'Network error. Please try again later.' };
     }
   };
-
   const validateTwoFactor = async (token) => {
     try {
       setError(null);
-      console.log(`Validating 2FA code with tempToken: ${tempToken?.substring(0, 10)}...`);
+      // Log the full token for debugging (only first and last few characters for security)
+      const tokenDebug = tempToken ? 
+        `${tempToken.substring(0, 10)}...${tempToken.substring(tempToken.length - 5)}` : 
+        'null';
+      console.log(`Validating 2FA code with tempToken: ${tokenDebug}`);
+      
+      // Check if token exists before proceeding
+      if (!tempToken) {
+        setError('Session expired. Please log in again.');
+        return { error: 'Session expired. Please log in again.' };
+      }
+      
       const response = await fetch(`${API_URL}/api/2fa/validate`, {
         method: 'POST',
         headers: {
@@ -104,7 +133,7 @@ export const AuthProvider = ({ children }) => {
         },
         body: JSON.stringify({ 
           tempToken: tempToken,
-          token: token
+          token: token.trim() // Trim any whitespace
         })
       });
       
@@ -118,8 +147,11 @@ export const AuthProvider = ({ children }) => {
         setTempToken(null);
         return { success: true };
       } else {
-        setError(data.error || 'Invalid 2FA token');
-        return { error: data.error || 'Invalid 2FA token' };
+        // More detailed error message
+        const errorMsg = data.error || 'Invalid 2FA token';
+        console.error('2FA validation failed:', errorMsg, 'Status:', response.status);
+        setError(errorMsg);
+        return { error: errorMsg };
       }
     } catch (error) {
       console.error('2FA validation error:', error);
