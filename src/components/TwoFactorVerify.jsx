@@ -12,31 +12,32 @@ const TwoFactorVerify = ({ tempToken, onComplete, onCancel }) => {
   
   // If tempToken isn't provided via props, try to get it from sessionStorage
   const actualToken = tempToken || sessionStorage.getItem('tempToken');
-  
-  // Check if user has static code setup
+    // Check if user has static code setup and pre-fill it if available
   useEffect(() => {
-    const checkCodeType = async () => {
-      if (!actualToken) return;
+    const checkForStoredCode = () => {
+      // Check for the twoFactorType in sessionStorage first (more reliable)
+      const storedType = sessionStorage.getItem('twoFactorType');
+      const storedStaticFlag = localStorage.getItem('usedStaticCode');
+      const storedStaticCode = localStorage.getItem('staticCode');
       
-      try {
-        // Decode the JWT token to get the user ID
-        const payload = JSON.parse(atob(actualToken.split('.')[1]));
-        setUserId(payload.id);
+      // If we have evidence this is a static code setup
+      if (storedType === 'static' || storedStaticFlag === 'true') {
+        setIsStaticCode(true);
+        console.log('Static code detected for 2FA verification');
         
-        // For simplicity, we'll assume it's a static code if 
-        // the token contains a special flag or user has used static code before
-        const hasUsedStaticCode = localStorage.getItem('usedStaticCode');
-        if (hasUsedStaticCode === 'true') {
-          setIsStaticCode(true);
+        // Pre-fill the static code if it exists in localStorage
+        if (storedStaticCode) {
+          console.log('Pre-filling stored static code');
+          setCode(storedStaticCode);
+        } else {
+          console.log('No stored static code found to pre-fill');
         }
-      } catch (err) {
-        console.error('Error checking code type:', err);
       }
     };
     
-    checkCodeType();
-  }, [actualToken]);
-
+    checkForStoredCode();
+  }, []);
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -71,18 +72,25 @@ const TwoFactorVerify = ({ tempToken, onComplete, onCancel }) => {
 
       const data = await response.json();
       console.log('2FA validation response:', data);
-      
-      if (response.ok) {
+        if (response.ok) {
         // If this is a static code (from the response or we detected it),
         // mark it in localStorage for future reference
         if (data.isStaticCode || isStaticCode) {
+          console.log('Setting static code flags after successful verification');
           localStorage.setItem('usedStaticCode', 'true');
+            // Make sure we keep the verified static code for future use
+          // First try to use staticCode from the response, fall back to the entered code
+          const codeToStore = data.staticCode || code;
+          if (codeToStore) {
+            localStorage.setItem('staticCode', codeToStore);
+          }
         }
         
         // Store the token and user info
         localStorage.setItem('token', data.token);
-        // Clear the temporary token
+        // Clear the temporary token and session data
         sessionStorage.removeItem('tempToken');
+        sessionStorage.removeItem('twoFactorType');
         onComplete(data); // Pass the user data and token back to the parent
       } else {
         // Track failed attempts

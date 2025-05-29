@@ -53,9 +53,17 @@ const StaticTwoFactorSetup = ({ onSetupComplete }) => {
         body: JSON.stringify({ token: verificationCode }),
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
+      const data = await response.json();      if (response.ok) {
+        // Store the static code in localStorage for future use
+        localStorage.setItem('staticCode', staticCode);
+        localStorage.setItem('usedStaticCode', 'true');
+        
+        // Also store the current verification code which should match the static code
+        // This ensures we're storing the same code that was validated
+        if (data.staticCode) {
+          localStorage.setItem('staticCode', data.staticCode);
+        }
+        
         setStep('complete');
         if (onSetupComplete) {
           onSetupComplete();
@@ -144,9 +152,17 @@ const StaticTwoFactorSetup = ({ onSetupComplete }) => {
       {step === 'complete' && (
         <div className="setup-success">
           <h3>Static Two-Factor Authentication is now enabled!</h3>
-          <p>Your static code is: <strong>{staticCode}</strong></p>
-          <p>Please remember this code, as you will need it every time you log in.</p>
-          <p>Note: This is a simplified 2FA method for testing purposes.</p>
+          <div className="static-code-reminder">
+            <p>Your static code is: <strong>{staticCode}</strong></p>
+            <button 
+              onClick={() => navigator.clipboard.writeText(staticCode)}
+              className="copy-button"
+            >
+              Copy Code
+            </button>
+          </div>
+          <p><strong>IMPORTANT:</strong> Please write down this code - you'll need it every time you log in.</p>
+          <p>This code has been saved to your browser for this session, but for security reasons, you should keep a backup.</p>
         </div>
       )}
     </div>

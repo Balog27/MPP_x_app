@@ -41,8 +41,7 @@ class TwoFactorService {
    * @param {string} token - The TOTP token to verify
    * @param {string} secret - The user's secret
    * @returns {boolean} - Whether the token is valid
-   */
-  verifyToken(token, secret) {
+   */  verifyToken(token, secret) {
     // Make sure inputs are valid
     if (!token || !secret) {
       console.log('Missing token or secret for verification');
@@ -65,7 +64,8 @@ class TwoFactorService {
       }
 
       // Check if this is a static code (prefixed with "STATIC:")
-      if (secret.startsWith('STATIC:')) {
+      if (secret && secret.startsWith('STATIC:')) {
+        console.log('Detected static code secret, using static verification');
         return this.verifyStaticCode(cleanToken, secret);
       }
         
@@ -100,7 +100,6 @@ class TwoFactorService {
       secret
     };
   }
-
   /**
    * Verify a static verification code
    * @param {string} token - The token to verify
@@ -108,15 +107,20 @@ class TwoFactorService {
    * @returns {boolean} - Whether the token is valid
    */
   verifyStaticCode(token, secret) {
-    if (!secret || !secret.startsWith('STATIC:')) {
-      console.log('Not a static code secret');
+    if (!token || !secret || !secret.startsWith('STATIC:')) {
+      console.log('Not a valid static code or secret');
       return false;
     }
     
-    const storedCode = secret.substring(7); // Remove "STATIC:" prefix
-    console.log(`Verifying static code. Input: ${token}, Expected: ${storedCode}`);
+    // Clean the token (remove any spaces)
+    const cleanToken = token.replace(/\s+/g, '');
     
-    return token === storedCode;
+    // Get the stored code without the "STATIC:" prefix
+    const storedCode = secret.substring(7);
+    console.log(`Verifying static code. Input: ${cleanToken}, Expected: ${storedCode}`);
+    
+    // Ensure exact match
+    return cleanToken === storedCode;
   }
 }
 

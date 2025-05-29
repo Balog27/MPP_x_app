@@ -167,11 +167,21 @@ router.post('/disable', auth, async (req, res) => {
       return res.status(400).json({ error: '2FA not enabled' });
     }
     
-    // Verify the token one last time to ensure it's the user
-    const isValid = twoFactorService.verifyToken(token, user.twoFactorSecret);
+    // Check if this is a static code
+    const isStaticCode = user.twoFactorSecret && user.twoFactorSecret.startsWith('STATIC:');
+    
+    // Verify the token based on the type (static or TOTP)
+    let isValid;
+    if (isStaticCode) {
+      isValid = twoFactorService.verifyStaticCode(token, user.twoFactorSecret);
+      console.log('Static code verification for disable:', isValid);
+    } else {
+      isValid = twoFactorService.verifyToken(token, user.twoFactorSecret);
+      console.log('TOTP verification for disable:', isValid);
+    }
     
     if (!isValid) {
-      return res.status(400).json({ error: 'Invalid token' });
+      return res.status(400).json({ error: 'Invalid verification code' });
     }
     
     // Disable 2FA
@@ -186,7 +196,7 @@ router.post('/disable', auth, async (req, res) => {
       'UPDATE',
       'User',
       user.id,
-      '2FA disabled',
+      isStaticCode ? 'Static 2FA disabled' : '2FA disabled',
       req
     );
     
@@ -236,14 +246,19 @@ router.post('/validate', async (req, res) => {
     
     // Clear the temporary token
     await user.update({ tempToken: null });
-    
-    // Generate a new full access token
+      // Generate a new full access token
     const fullToken = jwt.sign({ id: user.id }, JWT_SECRET, {
       expiresIn: '7d'
     });
     
     // Check if this was a static code authentication
     const isStaticCode = user.twoFactorSecret && user.twoFactorSecret.startsWith('STATIC:');
+    
+    // If this is a static code, extract the code without the STATIC: prefix
+    let staticCodeValue = null;
+    if (isStaticCode) {
+      staticCodeValue = user.twoFactorSecret.substring(7);
+    }
     
     // Log the successful 2FA login
     await monitoringService.logActivity(
@@ -263,7 +278,9 @@ router.post('/validate', async (req, res) => {
         role: user.role
       },
       token: fullToken,
-      isStaticCode: isStaticCode
+      isStaticCode: isStaticCode,
+      // Include the static code in the response if applicable
+      staticCode: staticCodeValue
     });
   } catch (error) {
     console.error('Error in 2FA validation:', error);

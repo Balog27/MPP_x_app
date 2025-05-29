@@ -11,6 +11,8 @@ function TwoFactorManagement() {
   const [showStaticSetup, setShowStaticSetup] = useState(false);
   const [disableCode, setDisableCode] = useState('');
   const [disableLoading, setDisableLoading] = useState(false);
+  const [isStaticCode, setIsStaticCode] = useState(false);
+  const [storedStaticCode, setStoredStaticCode] = useState('');
 
   const API_URL = process.env.REACT_APP_API_URL || 'https://mppxapp-production.up.railway.app';
 
@@ -27,6 +29,18 @@ function TwoFactorManagement() {
         if (response.ok) {
           const userData = await response.json();
           setUser(userData);
+          
+          // Check if we have a static code stored
+          const storedFlag = localStorage.getItem('usedStaticCode');
+          const storedCode = localStorage.getItem('staticCode');
+          if (storedFlag === 'true' && storedCode) {
+            setIsStaticCode(true);
+            setStoredStaticCode(storedCode);
+            // Pre-populate the disable code field with the static code
+            if (userData.twoFactorEnabled) {
+              setDisableCode(storedCode);
+            }
+          }
         } else {
           const errorData = await response.json();
           setError(errorData.error || 'Failed to load user data');
@@ -40,7 +54,6 @@ function TwoFactorManagement() {
 
     fetchUserData();
   }, [API_URL]);
-
   const handleDisable2FA = async (e) => {
     e.preventDefault();
     setDisableLoading(true);
@@ -65,6 +78,14 @@ function TwoFactorManagement() {
           twoFactorEnabled: false
         }));
         setDisableCode('');
+        
+        // Clear static code info from localStorage when 2FA is disabled
+        if (isStaticCode) {
+          localStorage.removeItem('staticCode');
+          localStorage.removeItem('usedStaticCode');
+          setIsStaticCode(false);
+          setStoredStaticCode('');
+        }
       } else {
         setError(data.error || 'Failed to disable 2FA');
       }
@@ -90,9 +111,23 @@ function TwoFactorManagement() {
   if (showSetup) {
     return <TwoFactorSetup onSetupComplete={handleSetupComplete} />;
   }
-
   if (showStaticSetup) {
-    return <StaticTwoFactorSetup onSetupComplete={() => setShowStaticSetup(false)} />;
+    return <StaticTwoFactorSetup onSetupComplete={() => {
+      // Update the user state after successful setup
+      setUser(prev => ({
+        ...prev,
+        twoFactorEnabled: true
+      }));
+      // Update local flags
+      setIsStaticCode(true);
+      // Load the static code from localStorage 
+      const storedCode = localStorage.getItem('staticCode');
+      if (storedCode) {
+        setStoredStaticCode(storedCode);
+      }
+      // Close the setup screen
+      setShowStaticSetup(false);
+    }} />;
   }
 
   return (
@@ -110,11 +145,23 @@ function TwoFactorManagement() {
           
           <p>
             Your account is protected with an additional layer of security. 
-            You'll need to enter a verification code from your authenticator app when logging in.
+            You'll need to enter a verification code {isStaticCode ? '(static code)' : 'from your authenticator app'} when logging in.
           </p>
           
+          {isStaticCode && (
+            <div className="static-code-reminder">
+              <p>Your static code is: <strong>{storedStaticCode}</strong></p>
+              <button 
+                onClick={() => navigator.clipboard.writeText(storedStaticCode)}
+                className="copy-button"
+              >
+                Copy Code
+              </button>
+            </div>
+          )}
+          
           <h3>Disable Two-Factor Authentication</h3>
-          <p>To disable 2FA, enter the current verification code from your authenticator app:</p>
+          <p>To disable 2FA, enter {isStaticCode ? 'your static code' : 'the current verification code from your authenticator app'}:</p>
           
           <form onSubmit={handleDisable2FA}>
             <input
